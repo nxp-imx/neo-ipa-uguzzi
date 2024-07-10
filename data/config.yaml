@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: CC0-1.0
+
+# Neo IPA uGuzzi configuration file
+#
+# This file provides configuration for the IPA, such as specific configuration
+# for each connected sensor and also for the tuning tool.
+#
+# All the sensors used by the application should be part of the sensors sequence
+# defined in this configuration file.
+#
+# The tuning tool parameters contains the sensor entity that will connect
+# with Tuning Tool for calibration.
+#
+# Nodes definition:
+#
+# sensors           = sequence of sensor-entry
+# sensor-entry      = mapping of {entity, socket-port, profiles}
+#   entity          = sensor entity name
+#   socket-port     = socket port used to connect to this sensor - default: 50000
+#   profiles        = sequence of profile-entry
+#   profile-entry   = mapping of {resolution, bit-depth, dtp-file, tuning-id, tuning-mode}
+#     resolution    = resolution configured for the sensor - default: none
+#     bit-depth     = bit depth configured for the sensor - default: 16
+#     dtp-file      = DTP file name to use for this sensor and resolution - default: none
+#     tuning-id     = tuning ID to use for this sensor and resolution - default: 2010
+#                     (referred as sensor module in TT user guide)
+#     tuning-mode   = tuning mode to use for this sensor and resolution - default: 0
+#                     (referred as camera mode in TT user guide)
+#
+# tuning-tool       = mapping of tuning tool parameters
+#   entity          = sensor entity that will connect to tuning tool for calibration
+
+%YAML 1.1
+---
+version: 1
+sensors:
+  - entity: mx95mbcam 8-0040
+    socket-port: 50000
+    profiles:
+      - resolution: [1920, 1280]
+        bit-depth: 16
+        dtp-file: database_mx95mbcam.bin
+        tuning-id: 2010
+        tuning-mode: 0
+  - entity: mx95mbcam 9-0040
+    socket-port: 50001
+    profiles:
+      - resolution: [1920, 1280]
+        bit-depth: 16
+        dtp-file: database_mx95mbcam.bin
+        tuning-id: 2010
+        tuning-mode: 0
+  - entity: mx95mbcam 10-0040
+    socket-port: 50002
+    profiles:
+      - resolution: [1920, 1280]
+        bit-depth: 16
+        dtp-file: database_mx95mbcam.bin
+        tuning-id: 2010
+        tuning-mode: 0
+  - entity: mx95mbcam 11-0040
+    socket-port: 50003
+    profiles:
+      - resolution: [1920, 1280]
+        bit-depth: 16
+        dtp-file: database_mx95mbcam.bin
+        tuning-id: 2010
+        tuning-mode: 0
+tuning-tool:
+  entity: mx95mbcam 8-0040
+...

@@ -1,0 +1,16 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/*
+ * Copyright 2024 NXP
+ *
+ * uGuzzi IPA version
+ *
+ * This file is auto-generated. Do not edit.
+ */
+
+#include <string>
+
+namespace libcamera::ipa::nxpneo {
+
+const std::string NEO_IPA_UGUZZI_VERSION = "UGUZZI_IPA_v@VCS_TAG@";
+
+} /* namespace libcamera::ipa::nxpneo */

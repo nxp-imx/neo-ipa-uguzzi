@@ -1,0 +1,6 @@
+Copies of various Linux kernel headers are included in this directory
+to avoid depending on particular versions of those headers being installed in
+the system.
+
+Make sure these files are aligned with the ones stored in NXP i.MX BSP:
+https://github.com/nxp-imx/linux-imx directory: include/uapi/linux

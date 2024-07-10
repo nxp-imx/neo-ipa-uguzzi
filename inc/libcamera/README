@@ -1,0 +1,8 @@
+These files are copies of the ones stored in libcamera main repo at:
+https://git.libcamera.org/libcamera/libcamera.git/tree/include/libcamera
+
+They are used by the Neo uGuzzi IPA to, among other things, use libcamera logging infrastructure.
+
+These files are based on libcamera v0.3.2
+
+Make sure these files are always aligned with the libcamera's.

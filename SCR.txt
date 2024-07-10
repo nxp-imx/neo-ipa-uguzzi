@@ -1,0 +1,28 @@
+NXP Software Content Register
+===========================================================
+
+Package:                    neo-ipa-uguzzi.git
+Version:                    0.2.1
+Outgoing License:           LA_OPT_NXP_SOFTWARE_License v60 february 2025 -  Additional distribution license granted, license in Section 2.3 applies
+License File:               LICENSES/LA_OPT_NXP_Software_License.txt
+                            See COPYING file for details on additional licenses, and LICENSES/ folder for a complete list of licenses used.
+Type of content:            source code, binary libraries
+Description and comments:   An Image Processing Algorithms library for libcamera, for i.MX95 ISP, based on proprietary MM Solutions EAD uGuzzi 3A library
+Release Location:           https://github.com/nxp-imx/neo-ipa-uguzzi
+Origin:                     NXP (LGPL-2.1-or-later)
+                            Libcamera (LGPL-2.1-or-later, and additional licenses. See libcamera's original COPYING file for full list) - https://git.libcamera.org/libcamera/libcamera.git/
+                            MM Solutions EAD (libs/libuguzzi*.so - LICENSES/LA_OPT_NXP_Software_License.txt)
+
+MM Solutions EAD Software Content Register
+===========================================================
+
+Package:                    uGuzzi FW (libuguzzi.so, libuguzzi_connect.so and their API headers, database_mx95mbcam.bin)
+Version:                    R2025022401
+Outgoing License:           LA_OPT_NXP_SOFTWARE_License v60 february 2025 -  Additional distribution license granted, license in Section 2.3 applies
+License File:               LICENSES/LA_OPT_NXP_Software_License.txt
+Type of content:            binary libraries, header files
+Description and comments:   set of libraries and tuning files(DTPs) with imaging algorithms such as AEC, AWB, AGLBCE and ISP control algorithms.
+                            The FW also allows Live tuning and control of the imaging subsystem using the connect library
+Release Location:           https://github.com/nxp-imx/neo-ipa-uguzzi
+Origin:                     MM Solutions EAD (proprietary code base with no external code)
+

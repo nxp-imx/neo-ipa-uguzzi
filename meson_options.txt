@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: CC0-1.0
+
+option('live_control',
+        type : 'feature',
+        value : 'enabled',
+        description : 'Enable Live Tuning/Control support')
+
+option('test',
+        type : 'boolean',
+        value : false,
+        description : 'Enable integration tests')

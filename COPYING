@@ -1,0 +1,65 @@
+.. SPDX-License-Identifier: CC-BY-SA-4.0
+
+==========
+ Licenses
+==========
+
+TL;DR summary: The Neo uGuzzi IPA core is covered by the LGPL-2.1-or-later license.
+It dynamically links with a closed-source library, the uGuzzi, that offers
+camera 3A processing services.
+
+Licenses are expressed through SPDX tags in text-based files that support
+comments. A copy of all licenses is stored in the LICENSES directory.
+
+The following text summarizes the licenses covering the different components of
+the project to offer a quick overview for developers. The SPDX  information is
+however authoritative and shall prevail in case of inconsistencies with the text below.
+
+The Neo uGuzzi IPA core source code, located in:
+- src/ directory
+- live_control/ directory
+- utils/ directory
+is fully covered by the LGPL-2.1-or-later license.
+Other files located in those directories, most notably the meson build files,
+may be covered by different licenses. None of their source code
+is incorporated in the neo-ipa-uguzzi.so binary, they thus don't affect the
+distribution terms of the binary.
+The project provides testing services, located in the tests/ directory and is also
+covered by the LGPL-2.1-or-later license.
+
+The camera helper code, located in cam_helper/, is covered by The LGPL-2.1-or-later
+license, except the md_parser.h, that is covered by the BSD-2-Clause license.
+
+The ISP controller API is defined in header files located in include/isp/ and is
+covered by the MIT license.
+
+Copies of libcamera base API headers are located in include/libcamera/ and
+are covered by the LGPL-2.1-or-later license.
+
+Copies of libcamera utility scripts are located in scripts/libcamera/ and
+are covered by the GPL-2.0-or-later license.
+
+Neo uGuzzi IPA is built on top of services provided by two closed-source libraries,
+the uGuzzi libraries, that are delivered as pre-built binaries.
+These binaries, located in the libs/ directory are covered by
+LICENSES/LA_OPT_NXP_Software_License.txt
+uGuzzi libraries APIs are defined in headers located in:
+- inc/uguzzi/
+- inc/uguzzi_connect/
+directories, and are covered by the same license.
+uGuzzi librairies operate with camera tuning files to perform the required processing
+on each frame received from the camera sensor. Camera tuning files are stored in the
+data/ folder and are covered by the same license as the uGuzzi libraries.
+
+Neo uGuzzi IPA also uses a helper class that allows retrieving binary data
+from a file. This code, located in dtp_utils/, is covered by the Apache-2.0 license and
+is derived from the BinaryData class implementation from libcamera IPU3 project hosted on
+https://git.libcamera.org/libcamera/ipu3-ipa.git/.
+
+Finally, copies of various Linux kernel headers are included in inc/linux/
+to avoid depending on particular versions of those headers being installed in
+the system. The Linux kernel headers are covered by their respective license,
+including the Linux kernel license syscall exception. Using a copy of those
+headers doesn't affect libcamera licensing terms in any way compared to using
+the same headers installed in the system from kernel headers packages provided
+by Linux distributions.
