@@ -1,0 +1,130 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/*
+ * Copyright 2025 NXP
+ */
+
+// neo_ipa_uguzzi.so
+cc_library_shared {
+    name: "neo_ipa_uguzzi",
+    rtti: true,
+    proprietary: true,
+    relative_install_path: "ipa/ipa-nxp-neo-uguzzi",
+    srcs: [
+        "dtp_utils/dtp.cpp",
+        "src/neo.cpp",
+        "utils/isp_settings_converter.cpp",
+        "utils/neo_config.cpp",
+        "utils/uguzzi_log.cpp",
+        "utils/params.cpp",
+        "utils/stats.cpp",
+        "live_control/live_control.cpp",
+        "live_control/live_control_cr.cpp",
+    ],
+    generated_headers: [
+        "neo_ipa_uguzzi_gen_version_h",
+    ],
+    cflags: [
+        "-DLIBCAMERA_BASE_PRIVATE",
+        "-DUGUZZI_CAMERA_CNT=8",
+        "-DUSE_LIVE_CONTROL",
+        "-DUGUZZI_CONNECT_COMMAND_MAX_PAYLOAD_SIZE=65536",
+        "-Wshadow",
+    ],
+    shared_libs: [
+        "libcamera-base",
+        "libcamera",
+        "libuguzzi",
+        "libuguzzi_connect",
+        "libcam_helper",
+    ],
+    include_dirs: [
+        "system/core/libcutils/include",
+    ],
+    local_include_dirs: [
+        "inc",
+        "dtp_utils",
+        "live_control",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libuguzzi",
+    proprietary: true,
+    srcs: [
+        "libs/libuguzzi.so",
+    ],
+    check_elf_files: true,
+    allow_undefined_symbols: true,
+}
+
+cc_prebuilt_library_shared {
+    name: "libuguzzi_connect",
+    proprietary: true,
+    srcs: [
+        "libs/libuguzzi_connect.so",
+    ],
+    check_elf_files: true,
+    allow_undefined_symbols: true,
+}
+
+cc_library_shared {
+    name: "libcam_helper",
+    vendor: true,
+    rtti: true,
+    srcs: [
+        "cam_helper/camera_helper.cpp",
+        "cam_helper/camera_helper_mx95mbcam.cpp",
+        "cam_helper/camera_helper_os08a20.cpp",
+        "cam_helper/md_parser_ox.cpp",
+        "cam_helper/libipa/camera_sensor_helper.cpp",
+    ],
+    cflags: [
+        "-DLIBCAMERA_BASE_PRIVATE",
+        "-DUGUZZI_CAMERA_CNT=8",
+        "-Wshadow",
+    ],
+    local_include_dirs: [
+        "inc",
+    ],
+    shared_libs: [
+        "libcamera-base",
+        "libcamera",
+    ],
+}
+
+filegroup {
+    name: "neo_ipa_uguzzi_sources",
+    srcs: [
+        ".git/**/*",
+        ".sourcegraph/*",
+        "**/*",
+    ],
+}
+
+genrule {
+    name: "neo_ipa_uguzzi_gen_version_h",
+    tool_files: [
+        ":neo_ipa_uguzzi_sources",
+        "scripts/libcamera/gen-version.sh",
+    ],
+    srcs: [ "inc/version.h.in", ],
+    out: ["version.h"],
+    cmd: "SBROOT=$$(realpath .) && " +
+        "cd $$(dirname $$(dirname $$(dirname $(location scripts/libcamera/gen-version.sh)))) && " +
+        "GITVERSION=$$(./scripts/libcamera/gen-version.sh . . 0.2.6 | awk '{print $$1}') && " +
+        "cd $$SBROOT && " +
+        "sed \"s~@VCS_TAG@~$$GITVERSION~g\" $(in) > $(out)",
+}
+
+// DTP and config files
+prebuilt_etc {
+    name: "neo_ipa_uguzzi_dtp",
+    sub_dir: "configs/libcamera/nxp/neo/uguzzi",
+    srcs: [
+        "data/database_mx95mbcam_1920-1280_16bpp.bin",
+        "data/database_os08a20_HDR_3840-2160_12bpp.bin",
+        "data/database_os08a20_SDR_3840-2160_12bpp.bin",
+        "data/config_ipa_uguzzi.yaml",
+    ],
+    vendor: true,
+}
