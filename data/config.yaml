@@ -66,4 +66,20 @@ sensors:
         dtp-file: database_mx95mbcam.bin
         tuning-id: 2010
         tuning-mode: 0
+  - entity: os08a20 2-0036
+    socket-port: 50004
+    profiles:
+      - resolution: [3840, 2160]
+        bit-depth: 12
+        dtp-file: database_os08a20.bin
+        tuning-id: 2010
+        tuning-mode: 0
+  - entity: os08a20 1-0036
+    socket-port: 50005
+    profiles:
+      - resolution: [3840, 2160]
+        bit-depth: 12
+        dtp-file: database_os08a20.bin
+        tuning-id: 2010
+        tuning-mode: 0
 ...
