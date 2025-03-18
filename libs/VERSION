@@ -1,9 +1,0 @@
-Compatible versions
-===================
-
-IPA version: UGUZZI_IPA_v0.2.0
-uGuzzi-Release: 2025. 2.24[1]
-sha256sum libuguzzi.so:
-c40fad89151916d01d86d5f857b6c079a00520b59de1a8c8c93774a1943074a3
-sha256sum libuguzzi_connect.so:
-37cddebb75aa12a39cf897ca659ce31c6d7b087396c22d9a17c7ace84e47ac81
