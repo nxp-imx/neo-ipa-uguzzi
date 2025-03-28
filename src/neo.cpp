@@ -86,11 +86,11 @@ public:
 	void unmapBuffers(const std::vector<unsigned int> &ids) override;
 
 	void queueRequest(const uint32_t frame, const ControlList &controls) override;
-	void fillParamsBuffer(const uint32_t frame,
-			      const std::map<uint32_t, uint32_t> &bufferIds) override;
-	void processStatsBuffer(const uint32_t frame,
-				const std::map<uint32_t, uint32_t> &bufferIds,
-				const ControlList &sensorControls) override;
+	void computeParams(const uint32_t frame,
+			   const std::map<uint32_t, uint32_t> &bufferIds) override;
+	void processStats(const uint32_t frame,
+			  const std::map<uint32_t, uint32_t> &bufferIds,
+			  const ControlList &sensorControls) override;
 
 private:
 	int initializeUguzzi(Size outputSize);
@@ -1151,8 +1151,8 @@ void IPANxpNeo::queueRequest(const uint32_t frame, const ControlList &controls)
 	(void)controls;
 }
 
-void IPANxpNeo::fillParamsBuffer(const uint32_t frame,
-				 const std::map<uint32_t, uint32_t> &bufferIds)
+void IPANxpNeo::computeParams(const uint32_t frame,
+			      const std::map<uint32_t, uint32_t> &bufferIds)
 {
 	ControlList &controls = mdControls_;
 	controls = ControlList(md::controlIdMap);
@@ -1212,12 +1212,12 @@ void IPANxpNeo::fillParamsBuffer(const uint32_t frame,
 				      mSensorDataPkg.channel[channel_].l2vs_ratio,
 				      params);
 
-	paramsBufferReady.emit(frame);
+	paramsComputed.emit(frame);
 }
 
-void IPANxpNeo::processStatsBuffer(const uint32_t frame,
-				   const std::map<uint32_t, uint32_t> &bufferIds,
-				   const ControlList &sensorControls)
+void IPANxpNeo::processStats(const uint32_t frame,
+			     const std::map<uint32_t, uint32_t> &bufferIds,
+			     const ControlList &sensorControls)
 {
 	auto statsIter = bufferIds.find(TypeStats);
 	unsigned int statsBufferId =
