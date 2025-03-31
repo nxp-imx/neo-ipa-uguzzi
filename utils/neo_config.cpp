@@ -202,9 +202,9 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &name,
 		if (iter_res != tuningInfos->end()) {
 			const TuningInfo *tuningInfo = &(*iter_res);
 			LOG(NxpNeoUguzziConfig, Debug) << "TuningInfo parsed for ["
-						       << name << ";"
-						       << resolution << "]: ["
-						       << tuningInfo->bitDepth << ", "
+						       << name << "; "
+						       << resolution << "; "
+						       << bitDepth << "bpp]: ["
 						       << tuningInfo->dtpFile << ", "
 						       << tuningInfo->tuningId << ", "
 						       << tuningInfo->tuningMode << "]";
@@ -212,7 +212,8 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &name,
 		}
 	}
 	LOG(NxpNeoUguzziConfig, Error) << "No tuning Info found for ["
-				       << name << ";" << resolution << "]";
+				       << name << "; " << resolution << "; "
+				       << bitDepth << "bpp]";
 	return nullptr;
 }
 
