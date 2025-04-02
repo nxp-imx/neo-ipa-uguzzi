@@ -3,7 +3,7 @@
  * isp_settings_converter.cpp
  * Conversion between the uGuzzi structures and the NXP NEOISP UAPI
  *
- * Copyright 2024 NXP
+ * Copyright 2024-2025 NXP
  */
 
 #include "isp_settings_converter.h"
@@ -13,6 +13,19 @@
 using namespace std;
 
 namespace libcamera::ipa::nxpneo {
+
+static void convertPipeConf(neoisp_pipe_conf_cfg_s *neoispPipeConf,
+			    imx9x_isp_pipe_conf_cfg_t *pipeconf)
+{
+	neoispPipeConf->img_conf_inalign0 =
+		pipeconf->input_image_0_alignment;
+	neoispPipeConf->img_conf_inalign1 =
+		pipeconf->input_image_1_alignment;
+	neoispPipeConf->img_conf_lpalign0 =
+		pipeconf->line_path_0_pixel_alignment;
+	neoispPipeConf->img_conf_lpalign1 =
+		pipeconf->line_path_1_pixel_alignment;
+}
 
 static void convertHc(neoisp_head_color_cfg_s *neoispHc,
 		      imx9x_isp_hc_cfg_t *hc)
@@ -608,6 +621,10 @@ void convertUguzziIspCfg2IspDrvCfg(imx9x_isp_cfg_prms_t *cfgParams,
 {
 	neoispMetaParams->features_cfg = {};
 	//pipe 1
+	if (cfgParams->update[PIPE_CONF_CFG]) {
+		convertPipeConf(&neoispMetaParams->regs.pipe_conf, &cfgParams->pipe_conf);
+		neoispMetaParams->features_cfg.pipe_conf_cfg = 1;
+	}
 	if (cfgParams->update[HC_CFG]) {
 		convertHc(&neoispMetaParams->regs.head_color, &cfgParams->hc);
 		neoispMetaParams->features_cfg.head_color_cfg = 1;
