@@ -35,10 +35,20 @@ struct aecTestsParams {
 	uint32_t analogGain;
 };
 
+struct aecTestsOutput {
+	uint32_t expTime;
+	uint32_t analogGain;
+	uint32_t brightness;
+	uint32_t sensorExposure;
+	uint32_t sensorGain;
+};
+
 struct testsContext {
 	uint8_t cameraCnt;
+	uint32_t aecTestNo;
 	Span<uint32_t> frameId;
 	aecTestsParams *paramsAec;
+	aecTestsOutput output;
 	/*
 	 * \todo: following params could be configured
 	 * from user using a config file
@@ -89,8 +99,8 @@ static void initAecTestParams(uint32_t *expTime, uint32_t *analogGain)
 	uint32_t runAecTestNo = ((runs - 1) / AEC_TESTS_RUNS_CNT);
 	aecTestsParams *params = context.paramsAec;
 
-	LOG(NxpNeoUguzziIPATests, Info) << "aecTestNo[" << runAecTestNo
-					<< "] - runs[" << runs << "]";
+	context.aecTestNo = runAecTestNo;
+
 	if (!((runs - 1) % AEC_TESTS_RUNS_CNT)) {
 		/* reset values when starting a new serie of runs */
 		testCount = 0;
@@ -202,38 +212,38 @@ static void logUguzziOutput(uint32_t channel,
 static void logAecUguzziInput(uint32_t channel,
 			      uguzzi_sensor_data_pkg_t *sensor_data_pkg)
 {
-	uguzzi_exposure_t *exp_gain = sensor_data_pkg->channel[channel].exp_gain;
-	uint32_t sensorExposure = exp_gain[UGUZZI_WDR3_ENTRY_LONG].exposure;
-	uint32_t sensorGain = (uint32_t)(((uint64_t)exp_gain[UGUZZI_WDR3_ENTRY_LONG].again * AEC_TESTS_GAIN_SCALE) / 65536);
 	if (!sensor_data_pkg) {
 		LOG(NxpNeoUguzziIPATests, Error) << "sensor_data_pkg is NULL";
 		return;
 	}
-	LOG(NxpNeoUguzziIPATests, Info) << "channel[" << channel
-					<< "] frame[" << context.frameId[channel]
-					<< "] sensor exposure/again=["
-					<< sensorExposure
-					<< ", "
-					<< sensorGain
-					<< "] totalExposure=["
-					<< sensorExposure * sensorGain
-					<< "]";
+	uguzzi_exposure_t *exp_gain = sensor_data_pkg->channel[channel].exp_gain;
+	uint32_t sensorExposure = exp_gain[UGUZZI_WDR3_ENTRY_LONG].exposure;
+	uint32_t sensorGain = (uint32_t)(((uint64_t)exp_gain[UGUZZI_WDR3_ENTRY_LONG].again * AEC_TESTS_GAIN_SCALE) / 65536);
+
+	context.output.sensorExposure = sensorExposure;
+	context.output.sensorGain = sensorGain;
 	return;
 }
 
 static void logAecUguzziOutput(uint32_t channel, uint32_t expTime,
 			       uint32_t analogGain, uint32_t brightness)
 {
-	LOG(NxpNeoUguzziIPATests, Info) << "channel[" << channel
-					<< "] frame[" << context.frameId[channel]
-					<< "] settings exposure/again=["
-					<< expTime << ", "
-					<< analogGain
-					<< "] totalExposure=["
-					<< (expTime * analogGain)
-					<< "] Ylvl=["
-					<< brightness
-					<< "]";
+	context.output.expTime = expTime;
+	context.output.analogGain = analogGain;
+	context.output.brightness = brightness;
+
+	/* Test number "TestNo" range is [1..3] as expected by parser */
+	LOG(NxpNeoUguzziIPATests, Info)
+		<< "Cam[" << channel << "]"
+		<< " TestNo " << (context.aecTestNo + 1)
+		<< " to_apply e=" << context.output.expTime
+		<< " g=" << context.output.analogGain
+		<< " t=" << (context.output.expTime * context.output.analogGain)
+		<< " applied e=" << context.output.sensorExposure
+		<< " g=" << context.output.sensorGain
+		<< " t=" << (context.output.sensorGain * context.output.sensorExposure)
+		<< " Fcnt=" << context.frameId[channel]
+		<< " Ylvl=" << context.output.brightness;
 
 	return;
 }
@@ -296,6 +306,7 @@ static int initTestsParams(const std::string &sensorModel)
 						 << "] is not supported for test";
 		return -EINVAL;
 	}
+	context.output = {};
 
 	return 0;
 }
