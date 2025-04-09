@@ -57,9 +57,7 @@ From the cross-build environment, run following script at the root of the uGuzzi
 How to build with Yocto?
 ========================
 
-The reference recipe ``neo-ipa-uguzzi.bb`` provided from the ``<neo-ipa-uguzzi>/utils/yocto_recipe/`` can be used to compile the uGuzzi IPA with Yocto.
-
-This recipe should be added into an existing meta-layer part of the Yocto BSP.
+The recipe for uGuzzi IPA is available from the i.MX Yocto Project i.MX BSP Layer ``meta-imx``.
 
 
 How to enable the uGuzzi IPA?
