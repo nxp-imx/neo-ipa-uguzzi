@@ -2,7 +2,7 @@ NXP Software Content Register
 ===========================================================
 
 Package:                    neo-ipa-uguzzi.git
-Version:                    0.2.1
+Version:                    0.2.2
 Outgoing License:           LA_OPT_NXP_SOFTWARE_License v60 february 2025 -  Additional distribution license granted, license in Section 2.3 applies
 License File:               LICENSES/LA_OPT_NXP_Software_License.txt
                             See COPYING file for details on additional licenses, and LICENSES/ folder for a complete list of licenses used.
