@@ -95,17 +95,17 @@ How to configure for tuning?
 
 By default, the uGuzzi IPA runs in isolated mode. 
 
-However for tuning and development purposes (connection with the Tuning Tool), the isolation mode should be disabled by setting following environment variable: 
+However for tuning and development purposes (connection with the Tuning Tool), the isolation mode should be disabled by setting following environment variable to a non-empty string:
 
 .. code-block:: shell
 
   export LIBCAMERA_IPA_DISABLE_ISOLATION="yes" 
 
-In the non isolated mode, the Live Tuning library can operate on a single camera. Therefore the camera to be attached to the Tuning Tool has to be explicitly identified by the user.
+In the non isolated mode, the Live Tuning library can only operate on a single camera. Therefore the camera to run in this mode has to be explicitly identified by the user.
 
 For that purpose, the IPA configuration file data/config.yaml is used to specify:
 
-* the camera to connect with Tuning Tool - this camera should be used by the application.
+* the camera to run in non-isolated mode - this camera should be used by the application.
 * the socket port to use for the IP connection between the uGuzzi IPA and the Tuning Tool - if not specified, the port 50000 is used by default.
 
 How to configure logging?

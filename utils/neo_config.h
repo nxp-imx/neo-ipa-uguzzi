@@ -38,7 +38,7 @@ public:
 				     Size resolution,
 				     unsigned int bitDepth) const;
 	uint16_t socketPort(const std::string &name) const;
-	const std::string &sensorToTune() const { return sensorToTune_; }
+	const std::optional<std::string> &sensorFilter() const { return sensorFilter_; }
 
 private:
 	static constexpr uint16_t kSocketPort = 50000;
@@ -49,10 +49,10 @@ private:
 	int parseSensors(const YamlObject &sensors);
 	int parseSensorProfiles(const YamlObject &profiles,
 				const std::string &entity);
-	int parseTuningTool(const YamlObject &tuningtool);
+	int parseEntityFilter(const YamlObject &entity);
 
 	SensorMap sensorMap_;
-	std::string sensorToTune_;
+	std::optional<std::string> sensorFilter_;
 	SocketMap socketMap_;
 };
 

@@ -56,17 +56,12 @@ int IPAFileConfig::load(const std::string &filename)
 		LOG(NxpNeoUguzziConfig, Warning)
 			<< "Invalid sensors section in config file";
 
-	/* Parse the tuningtool section */
-	if (!root->contains("tuning-tool")) {
-		LOG(NxpNeoUguzziConfig, Error)
-			<< "Configuration file doesn't contain any tuningtool section";
-		return -EINVAL;
-	}
-	const YamlObject &tuningtool = (*root)["tuning-tool"];
-	ret = parseTuningTool(tuningtool);
+	/* Parse the optional entity-filter section */
+	const YamlObject &entityFilter = (*root)["entity-filter"];
+	ret = parseEntityFilter(entityFilter);
 	if (ret)
 		LOG(NxpNeoUguzziConfig, Warning)
-			<< "Invalid tuningtool section in config file";
+			<< "Invalid entity filter section in config file";
 
 	return ret;
 }
@@ -160,14 +155,14 @@ int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
 }
 
 /**
- * \brief Parse the tuningtool section in the yaml configuration file
- * \param[in] tuningtool The tuningtool node in yaml file
+ * \brief Parse the sensor filter section in the yaml configuration file
+ * \param[in] entity The sensor filter node in yaml file
  * \return 0 if no error was detected, a negative error code otherwise
  */
-int IPAFileConfig::parseTuningTool(const YamlObject &tuningtool)
+int IPAFileConfig::parseEntityFilter(const YamlObject &entity)
 {
-	const YamlObject &entity = tuningtool["entity"];
-	sensorToTune_ = entity.get<std::string>().value_or("");
+	if (entity.isValue())
+		sensorFilter_ = entity.get<std::string>().value_or("");
 
 	return 0;
 }
