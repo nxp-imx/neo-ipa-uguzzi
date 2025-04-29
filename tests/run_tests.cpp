@@ -59,11 +59,11 @@ struct testsContext {
 
 static const aecTestsParams ox03c10AecParams[AEC_TESTS_NUM] = {
 	/* test0: gain and exposure variation, total exposure is constant */
-	{ 28000, 32000 },
+	{ 32000, 16000 },
 	/* test1: gain constant, exposure varies with slope */
-	{ 4000, 32000 },
+	{ 8000, 16000 },
 	/* test2: exposure constant, gain varies with slope */
-	{ 10000, 30000 },
+	{ 10000, 14000 },
 };
 
 static testsContext context;

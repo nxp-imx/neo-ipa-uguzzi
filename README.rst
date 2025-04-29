@@ -57,9 +57,7 @@ From the cross-build environment, run following script at the root of the uGuzzi
 How to build with Yocto?
 ========================
 
-The reference recipe ``neo-ipa-uguzzi.bb`` provided from the ``<neo-ipa-uguzzi>/utils/yocto_recipe/`` can be used to compile the uGuzzi IPA with Yocto.
-
-This recipe should be added into an existing meta-layer part of the Yocto BSP.
+The recipe for uGuzzi IPA is available from the i.MX Yocto Project i.MX BSP Layer ``meta-imx``.
 
 
 How to enable the uGuzzi IPA?
@@ -79,7 +77,7 @@ How to configure the uGuzzi IPA?
 
 The IPA can be configured using the configuration file data/config.yaml.
 
-This file provides configuration, such as specific parameters for each connected camera and also for the tuning tool.
+This file provides configuration, such as specific parameters for each connected camera.
 
 Each camera mode including its resolution and bit depth should be specified in the configuration file with its associated:
 
@@ -97,17 +95,17 @@ How to configure for tuning?
 
 By default, the uGuzzi IPA runs in isolated mode. 
 
-However for tuning and development purposes (connection with the Tuning Tool), the isolation mode should be disabled by setting following environment variable: 
+However for tuning and development purposes (connection with the Tuning Tool), the isolation mode should be disabled by setting following environment variable to a non-empty string:
 
 .. code-block:: shell
 
   export LIBCAMERA_IPA_DISABLE_ISOLATION="yes" 
 
-In the non isolated mode, the Live Tuning library can operate on a single camera. Therefore the camera to be attached to the Tuning Tool has to be explicitly identified by the user.
+In the non isolated mode, the Live Tuning library can only operate on a single camera, which is, by default, the first one initialized by libcamera. This single camera can also by changed explicitly by the user.
 
-For that purpose, the IPA configuration file data/config.yaml is used to specify:
+For that purpose, the IPA configuration file data/config.yaml can be used to specify:
 
-* the camera to connect with Tuning Tool - this camera should be used by the application.
+* the single camera to run - this camera should be used by the application.
 * the socket port to use for the IP connection between the uGuzzi IPA and the Tuning Tool - if not specified, the port 50000 is used by default.
 
 How to configure logging?

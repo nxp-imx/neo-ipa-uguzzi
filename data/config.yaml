@@ -8,8 +8,8 @@
 # All the sensors used by the application should be part of the sensors sequence
 # defined in this configuration file.
 #
-# The tuning tool parameters contains the sensor entity that will connect
-# with Tuning Tool for calibration.
+# The entity-filter can be defined to restrict the IPA operation to a
+# single sensor (optional).
 #
 # Nodes definition:
 #
@@ -27,8 +27,8 @@
 #     tuning-mode   = tuning mode to use for this sensor and resolution - default: 0
 #                     (referred as camera mode in TT user guide)
 #
-# tuning-tool       = mapping of tuning tool parameters
-#   entity          = sensor entity that will connect to tuning tool for calibration
+# entity-filter     = sensor entity name to initialize as a single sensor
+#                     optional
 
 %YAML 1.1
 ---
@@ -66,6 +66,20 @@ sensors:
         dtp-file: database_mx95mbcam.bin
         tuning-id: 2010
         tuning-mode: 0
-tuning-tool:
-  entity: mx95mbcam 8-0040
+  - entity: os08a20 2-0036
+    socket-port: 50004
+    profiles:
+      - resolution: [3840, 2160]
+        bit-depth: 12
+        dtp-file: database_os08a20.bin
+        tuning-id: 2010
+        tuning-mode: 0
+  - entity: os08a20 1-0036
+    socket-port: 50005
+    profiles:
+      - resolution: [3840, 2160]
+        bit-depth: 12
+        dtp-file: database_os08a20.bin
+        tuning-id: 2010
+        tuning-mode: 0
 ...

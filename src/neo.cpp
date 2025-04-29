@@ -68,6 +68,19 @@ namespace ipa::nxpneo {
 #define HIST_H2_ROI1_START_IDX (320U)
 #define HIST_H3_ROI1_START_IDX (448U)
 
+/*
+ * This boolean is a shared variable between IPA instances when
+ * they are running in non isolated mode, where they live
+ * in multiple threads from the same process.
+ * In that case, the boolean is used to indicate that an IPA
+ * instance has already been initialized.
+ * It is useful in that context to let a single IPA to initialize because:
+ * - only one uGuzzi instance can run in multithread environment
+ * - the live control singleton is used by the uguzzi output data
+ *   packets callback to redirect to a function of the class.
+ */
+atomic_flag gblIpaInitialized = ATOMIC_FLAG_INIT;
+
 class IPANxpNeo : public IPANxpNeoInterface
 {
 public:
@@ -96,6 +109,7 @@ private:
 	int initializeUguzzi(Size outputSize);
 	void deinitUguzzi();
 	int configureUguzzi(const std::map<uint32_t, IPAStream> &streamConfig);
+	int verifySensorToInit();
 	int getDTPConfig();
 	int checkDTPConfig(const IPACameraSensorInfo &sensorInfo);
 	int setUguzziInitialConfig();
@@ -320,6 +334,47 @@ int IPANxpNeo::configureUguzzi(const std::map<uint32_t, IPAStream> &streamConfig
 	}
 	LOG(NxpNeoUguzziIPA, Debug) << "Successful uGuzzi stream config!";
 
+	return 0;
+}
+
+/**
+ * \brief Verify conditions to initialize IPA/sensor
+ *
+ * The conditions to be fulfilled so that the IPA instance can be started are:
+ * - Non-isolated mode: no other IPA instance was previously initialized
+     in the same process and sensor filtering not defined in the configuration file.
+ * - Sensor filtering: if defined in the configuration file, the actual sensor entity
+ *   name should match the definition.
+ *
+ * \return 0 if IPA/sensor is to be initialized, a negative error code otherwise
+ */
+int IPANxpNeo::verifySensorToInit()
+{
+	bool initialize = true;
+	const char *disableIsolation = getenv("LIBCAMERA_IPA_DISABLE_ISOLATION");
+	bool nonIsolated = (disableIsolation && disableIsolation[0] != '\0');
+	bool sensorFilter = false;
+
+	if (config_.sensorFilter().has_value() &&
+	    config_.sensorFilter().value() != "") {
+		sensorFilter = true;
+		LOG(NxpNeoUguzziIPA, Debug)
+			<< "Sensor filter enabled for: "
+			<< config_.sensorFilter().value();
+	}
+
+	if (nonIsolated && !sensorFilter && gblIpaInitialized.test_and_set())
+		initialize = false;
+
+	if (sensorFilter && config_.sensorFilter().value() != sensorEntity_)
+		initialize = false;
+
+	if (!initialize) {
+		LOG(NxpNeoUguzziIPA, Info)
+			<< "Sensor " << sensorEntity_
+			<< " doesn't verify conditions to be initialized.";
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -921,17 +976,8 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 		logSetFile(logPath.c_str());
 	}
 
-	char *disableIsolation = getenv("LIBCAMERA_IPA_DISABLE_ISOLATION");
-	if ((disableIsolation && disableIsolation[0] != '\0') &&
-	    (config_.sensorToTune() != sensorEntity_)) {
-		/* IPA runs in non-isolated mode */
-		/* Restrict initialization to the unique sensor to tune */
-		LOG(NxpNeoUguzziIPA, Debug)
-			<< "In non-isolated mode, initialization is restricted "
-			<< "to the unique sensor to tune, "
-			<< "hence this IPA init is skipped";
+	if (verifySensorToInit())
 		return 0;
-	}
 
 	LOG(NxpNeoUguzziIPA, Info) << "IPANxpNeo "
 				   << NEO_IPA_UGUZZI_VERSION;
@@ -1025,7 +1071,8 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	(void)ipaControls;
 
 	if (!enabled_) {
-		LOG(NxpNeoUguzziIPA, Error) << "IPA for this sensor is not initialized";
+		LOG(NxpNeoUguzziIPA, Error) << "IPA for sensor "
+					    << sensorEntity_ << " is not initialized";
 		return -ENODEV;
 	}
 
@@ -1045,8 +1092,9 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 					 sensorInfo->bitsPerPixel);
 	if (!tuningInfo_) {
 		LOG(NxpNeoUguzziIPA, Warning) << "No tuningInfo for ["
-					      << sensorEntity_ << ";"
-					      << sensorInfo->outputSize << "]";
+					      << sensorEntity_ << "; "
+					      << sensorInfo->outputSize << "; "
+					      << sensorInfo->bitsPerPixel << "bpp]";
 		return -EINVAL;
 	}
 
