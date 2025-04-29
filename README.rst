@@ -77,7 +77,7 @@ How to configure the uGuzzi IPA?
 
 The IPA can be configured using the configuration file data/config.yaml.
 
-This file provides configuration, such as specific parameters for each connected camera and also for the tuning tool.
+This file provides configuration, such as specific parameters for each connected camera.
 
 Each camera mode including its resolution and bit depth should be specified in the configuration file with its associated:
 
@@ -101,11 +101,11 @@ However for tuning and development purposes (connection with the Tuning Tool), t
 
   export LIBCAMERA_IPA_DISABLE_ISOLATION="yes" 
 
-In the non isolated mode, the Live Tuning library can only operate on a single camera. Therefore the camera to run in this mode has to be explicitly identified by the user.
+In the non isolated mode, the Live Tuning library can only operate on a single camera, which is, by default, the first one initialized by libcamera. This single camera can also by changed explicitly by the user.
 
-For that purpose, the IPA configuration file data/config.yaml is used to specify:
+For that purpose, the IPA configuration file data/config.yaml can be used to specify:
 
-* the camera to run in non-isolated mode - this camera should be used by the application.
+* the single camera to run - this camera should be used by the application.
 * the socket port to use for the IP connection between the uGuzzi IPA and the Tuning Tool - if not specified, the port 50000 is used by default.
 
 How to configure logging?
