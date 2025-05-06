@@ -62,8 +62,8 @@ sensors:
         dtp-file: database_os08a20.bin
         tuning-id: 2010
         tuning-mode: 0
-  - entity: os08a20 2-0036
-    socket-port: 50004
   - entity: os08a20 1-0036
-    socket-port: 50005
+    socket-port: 50010
+  - entity: os08a20 2-0036
+    socket-port: 50011
 ...
