@@ -81,18 +81,29 @@ int IPAFileConfig::parseSensors(const YamlObject &sensors)
 			return -EINVAL;
 		}
 		const auto &entity = sensorName["entity"].get<std::string>();
-		if (!entity.has_value()) {
-			LOG(NxpNeoUguzziConfig, Error) << "Missing camera entity name";
+		const auto &model = sensorName["model"].get<std::string>();
+
+		if (!entity.has_value() && !model.has_value()) {
+			LOG(NxpNeoUguzziConfig, Error)
+				<< "Missing camera entity and model name";
 			return -EINVAL;
 		}
+
+		/*
+		 * If a configuration is assigned to both a sensor model and a
+		 * sensor entity, this configuration will be mapped with the
+		 * entity since it is more specialized than the model.
+		 */
+		std::string sensor = entity.has_value() ? entity.value() : model.value();
+
 		/* Parse the socket port */
 		const YamlObject &portObj = sensorName["socket-port"];
-		socketMap_[entity.value()] =
+		socketMap_[sensor] =
 			portObj.get<uint16_t>().value_or(kSocketPort);
 
 		/* Parse the profiles info */
 		const YamlObject &profiles = sensorName["profiles"];
-		int ret = parseSensorProfiles(profiles, entity.value());
+		int ret = parseSensorProfiles(profiles, sensor);
 		if (ret) {
 			LOG(NxpNeoUguzziConfig, Warning)
 				<< "Invalid profiles section in config file";
@@ -106,11 +117,11 @@ int IPAFileConfig::parseSensors(const YamlObject &sensors)
 /**
  * \brief Parse the sensor profiles section in the yaml configuration file
  * \param[in] profiles The profiles node in yaml file
- * \param[in] entity The sensor entity for which profile is parsed
+ * \param[in] sensor The sensor model or entity for which profile is parsed
  * \return 0 if no error was detected, a negative error code otherwise
  */
 int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
-				       const std::string &entity)
+				       const std::string &sensor)
 {
 	std::vector<TuningInfo> tuningInfos;
 
@@ -149,7 +160,7 @@ int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
 		tuningInfos.push_back(tuningInfo);
 	}
 
-	sensorMap_[entity] = tuningInfos;
+	sensorMap_[sensor] = tuningInfos;
 
 	return 0;
 }
@@ -168,9 +179,12 @@ int IPAFileConfig::parseEntityFilter(const YamlObject &entity)
 }
 
 /**
- * \brief Report the tuning info associated to a camera entity,
+ * \brief Report the tuning info associated to a camera entity or model,
  *        to a resolution and to a bit depth.
- * \param[in] name The name of the camera media device entity
+ *        If no tuning info is found for entity, the tuning info is
+ *        searched based on model.
+ * \param[in] model The name of the camera media device model
+ * \param[in] entity The name of the camera media device entity
  * \param[in] resolution The resolution of the camera stream
  * \param[in] bitDepth The bits per pixel of the camera stream
  *
@@ -179,62 +193,78 @@ int IPAFileConfig::parseEntityFilter(const YamlObject &entity)
  *
  * \return 0 on success or a negative error code otherwise
  */
-const TuningInfo *IPAFileConfig::tuningInfo(const std::string &name,
+const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
+					    const std::string &entity,
 					    Size resolution,
 					    unsigned int bitDepth) const
 {
-	auto iter = sensorMap_.find(name);
+	/*
+	 * For the tuning info search, give priority to entity-based match over
+	 * the model-based match because it is more specialized.
+	 */
+	for (std::string name : { entity, model }) {
+		auto iter = sensorMap_.find(name);
+		if (iter != sensorMap_.end()) {
+			/* Report the tuning infos set matching the sensor entity/model */
+			const std::vector<TuningInfo> *tuningInfos = &(iter->second);
 
-	if (iter != sensorMap_.end()) {
-		/* Report the tuning infos set matching the sensor entity */
-		const std::vector<TuningInfo> *tuningInfos = &(iter->second);
-
-		/*
-		 * Search for the tuning infos matching the resolution and
-		 * the bit depth.
-		 */
-		auto iter_res = std::find_if(
-			tuningInfos->begin(), tuningInfos->end(),
-			[&](auto &info) {
-				return ((info.resolution == resolution) &&
-					(info.bitDepth == bitDepth));
-			});
-		if (iter_res != tuningInfos->end()) {
-			const TuningInfo *tuningInfo = &(*iter_res);
-			LOG(NxpNeoUguzziConfig, Debug) << "TuningInfo parsed for ["
-						       << name << "; "
-						       << resolution << "; "
-						       << bitDepth << "bpp]: ["
-						       << tuningInfo->dtpFile << ", "
-						       << tuningInfo->tuningId << ", "
-						       << tuningInfo->tuningMode << "]";
-			return tuningInfo;
+			/*
+			 * Search for the tuning infos matching the resolution and
+			 * the bit depth.
+			 */
+			auto iter_res = std::find_if(
+				tuningInfos->begin(), tuningInfos->end(),
+				[&](auto &info) {
+					return ((info.resolution == resolution) &&
+						(info.bitDepth == bitDepth));
+				});
+			if (iter_res != tuningInfos->end()) {
+				const TuningInfo *tuningInfo = &(*iter_res);
+				LOG(NxpNeoUguzziConfig, Debug)
+					<< "TuningInfo parsed for ["
+					<< entity << "; "
+					<< resolution << "; "
+					<< bitDepth << "bpp]: ["
+					<< tuningInfo->dtpFile << ", "
+					<< tuningInfo->tuningId << ", "
+					<< tuningInfo->tuningMode << "]";
+				return tuningInfo;
+			}
 		}
 	}
 	LOG(NxpNeoUguzziConfig, Error) << "No tuning Info found for ["
-				       << name << "; " << resolution << "; "
-				       << bitDepth << "bpp]";
+				       << entity << "; "
+				       << resolution << "; " << bitDepth << "bpp]";
 	return nullptr;
 }
 
 /**
- * \brief Report the socket port associated to a camera entity
- * \param[in] name The name of the camera media device entity
+ * \brief Report the socket port associated to a camera entity or model.
+ *        If no socket port is found for entity, the socket port is
+ *        searched based on model.
+ * \param[in] model The name of the camera media device model
+ * \param[in] entity The name of the camera media device entity
  *
  * \return The socket port if it exists, 0 otherwise
  */
-uint16_t IPAFileConfig::socketPort(const std::string &name) const
+uint16_t IPAFileConfig::socketPort(const std::string &model,
+				   const std::string &entity) const
 {
-	auto iter = socketMap_.find(name);
+	/*
+	 * For the socket port search, give priority to entity-based match over
+	 * the model-based match because it is more specialized.
+	 */
+	for (std::string name : { entity, model }) {
+		auto iter = socketMap_.find(name);
 
-	if (iter != socketMap_.end()) {
-		LOG(NxpNeoUguzziConfig, Debug) << "Socket port parsed for "
-					       << name << ": ["
-					       << iter->second << "]";
-		return iter->second;
-	} else {
-		return 0;
+		if (iter != socketMap_.end()) {
+			LOG(NxpNeoUguzziConfig, Debug) << "Socket port parsed for "
+						       << entity << ": ["
+						       << iter->second << "]";
+			return iter->second;
+		}
 	}
+	return 0;
 }
 
 } /* namespace libcamera::ipa::nxpneo */
