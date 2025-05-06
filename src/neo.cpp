@@ -1025,7 +1025,8 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 
 #ifdef USE_LIVE_CONTROL
 	LiveControl &liveCtrl = LiveControl::getInstance();
-	int ret = liveCtrl.createSocket(config_.socketPort(sensorEntity_));
+	const uint16_t socketPort = config_.socketPort(sensorModel_, sensorEntity_);
+	int ret = liveCtrl.createSocket(socketPort);
 	if (ret)
 		LOG(NxpNeoUguzziIPA, Error)
 			<< "Live Tuning socket is not created!";
@@ -1087,11 +1088,12 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	deinitUguzzi();
 
 	/* Get the tuning info according to the sensor entity and resolution */
-	tuningInfo_ = config_.tuningInfo(sensorEntity_,
+	tuningInfo_ = config_.tuningInfo(sensorModel_, sensorEntity_,
 					 sensorInfo->outputSize,
 					 sensorInfo->bitsPerPixel);
 	if (!tuningInfo_) {
 		LOG(NxpNeoUguzziIPA, Warning) << "No tuningInfo for ["
+					      << sensorModel_ << "; "
 					      << sensorEntity_ << "; "
 					      << sensorInfo->outputSize << "; "
 					      << sensorInfo->bitsPerPixel << "bpp]";

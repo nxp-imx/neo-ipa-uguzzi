@@ -34,10 +34,12 @@ public:
 	IPAFileConfig() {};
 	virtual ~IPAFileConfig() {};
 	int load(const std::string &filename);
-	const TuningInfo *tuningInfo(const std::string &name,
+	const TuningInfo *tuningInfo(const std::string &model,
+				     const std::string &entity,
 				     Size resolution,
 				     unsigned int bitDepth) const;
-	uint16_t socketPort(const std::string &name) const;
+	uint16_t socketPort(const std::string &model,
+			    const std::string &entity) const;
 	const std::optional<std::string> &sensorFilter() const { return sensorFilter_; }
 
 private:
@@ -48,7 +50,7 @@ private:
 
 	int parseSensors(const YamlObject &sensors);
 	int parseSensorProfiles(const YamlObject &profiles,
-				const std::string &entity);
+				const std::string &sensor);
 	int parseEntityFilter(const YamlObject &entity);
 
 	SensorMap sensorMap_;
