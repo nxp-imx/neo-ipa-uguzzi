@@ -40,52 +40,30 @@
 ---
 version: 1
 sensors:
+  - model: mx95mbcam
+    profiles:
+      - resolution: [1920, 1280]
+        bit-depth: 16
+        dtp-file: database_mx95mbcam.bin
+        tuning-id: 2010
+        tuning-mode: 0
   - entity: mx95mbcam 8-0040
     socket-port: 50000
-    profiles:
-      - resolution: [1920, 1280]
-        bit-depth: 16
-        dtp-file: database_mx95mbcam.bin
-        tuning-id: 2010
-        tuning-mode: 0
   - entity: mx95mbcam 9-0040
     socket-port: 50001
-    profiles:
-      - resolution: [1920, 1280]
-        bit-depth: 16
-        dtp-file: database_mx95mbcam.bin
-        tuning-id: 2010
-        tuning-mode: 0
   - entity: mx95mbcam 10-0040
     socket-port: 50002
-    profiles:
-      - resolution: [1920, 1280]
-        bit-depth: 16
-        dtp-file: database_mx95mbcam.bin
-        tuning-id: 2010
-        tuning-mode: 0
   - entity: mx95mbcam 11-0040
     socket-port: 50003
+  - model: os08a20
     profiles:
-      - resolution: [1920, 1280]
-        bit-depth: 16
-        dtp-file: database_mx95mbcam.bin
+      - resolution: [3840, 2160]
+        bit-depth: 12
+        dtp-file: database_os08a20.bin
         tuning-id: 2010
         tuning-mode: 0
   - entity: os08a20 2-0036
     socket-port: 50004
-    profiles:
-      - resolution: [3840, 2160]
-        bit-depth: 12
-        dtp-file: database_os08a20.bin
-        tuning-id: 2010
-        tuning-mode: 0
   - entity: os08a20 1-0036
     socket-port: 50005
-    profiles:
-      - resolution: [3840, 2160]
-        bit-depth: 12
-        dtp-file: database_os08a20.bin
-        tuning-id: 2010
-        tuning-mode: 0
 ...
