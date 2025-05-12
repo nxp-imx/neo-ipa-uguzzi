@@ -3,7 +3,7 @@ NXP Software Content Register
 
 Package:                    neo-ipa-uguzzi.git
 Version:                    0.2.2
-Outgoing License:           LA_OPT_NXP_SOFTWARE_License v60 february 2025 -  Additional distribution license granted, license in Section 2.3 applies
+Outgoing License:           LA_OPT_NXP_Software_License v62 May 2025 -  Additional distribution license granted, license in Section 2.3 applies
 License File:               LICENSES/LA_OPT_NXP_Software_License.txt
                             See COPYING file for details on additional licenses, and LICENSES/ folder for a complete list of licenses used.
 Type of content:            source code, binary libraries
@@ -18,7 +18,7 @@ MM Solutions EAD Software Content Register
 
 Package:                    uGuzzi FW (libuguzzi.so, libuguzzi_connect.so and their API headers, database_mx95mbcam.bin)
 Version:                    R2025022401
-Outgoing License:           LA_OPT_NXP_SOFTWARE_License v60 february 2025 -  Additional distribution license granted, license in Section 2.3 applies
+Outgoing License:           LA_OPT_NXP_Software_License v62 May 2025 -  Additional distribution license granted, license in Section 2.3 applies
 License File:               LICENSES/LA_OPT_NXP_Software_License.txt
 Type of content:            binary libraries, header files
 Description and comments:   set of libraries and tuning files(DTPs) with imaging algorithms such as AEC, AWB, AGLBCE and ISP control algorithms.
