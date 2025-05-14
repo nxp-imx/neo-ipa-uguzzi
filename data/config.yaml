@@ -6,7 +6,10 @@
 # for each connected sensor and also for the tuning tool.
 #
 # All the sensors used by the application should be part of the sensors sequence
-# defined in this configuration file.
+# defined in this configuration file and should be identified by either
+# its model or its entity name.
+# If a sensor configuration is defined for both its model and its entity name,
+# then the definition relevant to the entity takes precedence.
 #
 # The entity-filter can be defined to restrict the IPA operation to a
 # single sensor (optional).
@@ -14,8 +17,11 @@
 # Nodes definition:
 #
 # sensors           = sequence of sensor-entry
-# sensor-entry      = mapping of {entity, socket-port, profiles}
+# sensor-entry      = mapping of {model, entity, socket-port, profiles}
+#   model           = sensor model
+#                     optional if entity is defined
 #   entity          = sensor entity name
+#                     optional, if model is defined
 #   socket-port     = socket port used to connect to this sensor - default: 50000
 #   profiles        = sequence of profile-entry
 #   profile-entry   = mapping of {resolution, bit-depth, dtp-file, tuning-id, tuning-mode}
@@ -34,40 +40,22 @@
 ---
 version: 1
 sensors:
+  - model: mx95mbcam
+    profiles:
+      - resolution: [1920, 1280]
+        bit-depth: 16
+        dtp-file: database_mx95mbcam.bin
+        tuning-id: 2010
+        tuning-mode: 0
   - entity: mx95mbcam 8-0040
     socket-port: 50000
-    profiles:
-      - resolution: [1920, 1280]
-        bit-depth: 16
-        dtp-file: database_mx95mbcam.bin
-        tuning-id: 2010
-        tuning-mode: 0
   - entity: mx95mbcam 9-0040
     socket-port: 50001
-    profiles:
-      - resolution: [1920, 1280]
-        bit-depth: 16
-        dtp-file: database_mx95mbcam.bin
-        tuning-id: 2010
-        tuning-mode: 0
   - entity: mx95mbcam 10-0040
     socket-port: 50002
-    profiles:
-      - resolution: [1920, 1280]
-        bit-depth: 16
-        dtp-file: database_mx95mbcam.bin
-        tuning-id: 2010
-        tuning-mode: 0
   - entity: mx95mbcam 11-0040
     socket-port: 50003
-    profiles:
-      - resolution: [1920, 1280]
-        bit-depth: 16
-        dtp-file: database_mx95mbcam.bin
-        tuning-id: 2010
-        tuning-mode: 0
-  - entity: os08a20 2-0036
-    socket-port: 50004
+  - model: os08a20
     profiles:
       - resolution: [3840, 2160]
         bit-depth: 12
@@ -75,11 +63,7 @@ sensors:
         tuning-id: 2010
         tuning-mode: 0
   - entity: os08a20 1-0036
-    socket-port: 50005
-    profiles:
-      - resolution: [3840, 2160]
-        bit-depth: 12
-        dtp-file: database_os08a20.bin
-        tuning-id: 2010
-        tuning-mode: 0
+    socket-port: 50010
+  - entity: os08a20 2-0036
+    socket-port: 50011
 ...
