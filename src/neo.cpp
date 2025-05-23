@@ -966,7 +966,7 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 	dataDir_ = utils::dirname(settings.configurationFile) + "/uguzzi";
 
 	/* Load IPA configuration */
-	if (loadConfigFile(dataDir_ + "/config.yaml"))
+	if (loadConfigFile(dataDir_ + "/config_ipa_uguzzi.yaml"))
 		return -EINVAL;
 
 	const char *dir = getenv("LIBCAMERA_IPA_UGUZZI_LOG_DIR");

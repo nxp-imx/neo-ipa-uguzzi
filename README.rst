@@ -75,7 +75,7 @@ This variable specifies the IPA module search path used by the pipeline handler 
 How to configure the uGuzzi IPA?
 ================================
 
-The IPA can be configured using the configuration file data/config.yaml.
+The IPA can be configured using the configuration file data/config_ipa_uguzzi.yaml.
 
 This file provides configuration, such as specific parameters for each connected camera.
 
@@ -87,7 +87,7 @@ Each camera mode including its resolution and bit depth should be specified in t
 
 If the camera mode entry doesn't exist, the IPA will fail.
 
-Refer to the description from data/config.yaml for more details.
+Refer to the description from data/config_ipa_uguzzi.yaml for more details.
 
 
 How to configure for tuning?
@@ -103,7 +103,7 @@ However for tuning and development purposes (connection with the Tuning Tool), t
 
 In the non isolated mode, the Live Tuning library can only operate on a single camera, which is, by default, the first one initialized by libcamera. This single camera can also by changed explicitly by the user.
 
-For that purpose, the IPA configuration file data/config.yaml can be used to specify:
+For that purpose, the IPA configuration file data/config_ipa_uguzzi.yaml can be used to specify:
 
 * the single camera to run - this camera should be used by the application.
 * the socket port to use for the IP connection between the uGuzzi IPA and the Tuning Tool - if not specified, the port 50000 is used by default.
