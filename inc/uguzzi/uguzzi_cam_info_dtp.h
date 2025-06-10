@@ -117,6 +117,9 @@ typedef enum {
     UGUZZI_CAM_INFO_CFA_IRGGR_4X4,
     UGUZZI_CAM_INFO_CFA_GIRBG_4X4,
     UGUZZI_CAM_INFO_CFA_IRGGB_4X4,
+    UGUZZI_CAM_INFO_CFA_MONOCHROME,
+    UGUZZI_CAM_INFO_CFA_IR,
+    UGUZZI_CAM_INFO_CFA_RCCC,
 } uguzzi_cam_info_cfa_t;
 
 /**
@@ -182,7 +185,7 @@ typedef struct {
      * The image buffer might include embedded lines in which case the actual pixel data might have
      * a different color pattern. This happens if the number of front embedded lines is odd.
      */
-    int32_t cfa; /* min: 0, max: 11 */
+    int32_t cfa; /* min: 0, max: 14 */
 
     /**
      * The type of the data pedestal used. See uguzzi_cam_info_dp_t for possible values.

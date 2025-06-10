@@ -106,6 +106,9 @@ typedef struct {
                                       (for correction of sensor limits)*/
     uint32_t valid;                 /**< set for valid channels in the
                                       multicamera package structure */
+    int32_t  applied_lens_pos;      /**< AF lens position. Represents precise
+                                      physical location of the lens along its focus travel,
+                                      if min and max are correctly tuned. */
 } uguzzi_sensor_data_t;
 
 /**
@@ -155,6 +158,9 @@ typedef struct {
     awb_statistics_data_hw_t    *p_awb_stats;   /**< pointer to ISP generated
                                                   AWB statistics */
     wb_statistics_data_t        *p_awb_sw_stats;/**< alternative stats */
+    af_statistics_data_hw_t     *p_af_stats;    /**< pointer to ISP generated
+                                                  AF stats and low-res Y(grayscale)
+                                                  image */
     uguzzi_stats_t              stats_type;
     uint16_t                    valid;  /**< validity of channel stats input */
 } uguzzi_stats_data_t;
@@ -194,8 +200,11 @@ typedef struct {
  * Exposure is for single exposure frame but WB settings are common for all exposure frames
  */
 typedef struct {
-    uguzzi_frame_settings_normal_t exp_n;   /**< normal settings */
-    uguzzi_whitebalance_t          wb;      /**< WB coefficients */
+    uguzzi_frame_settings_normal_t exp_n;    /**< normal settings */
+    uguzzi_whitebalance_t          wb;       /**< WB coefficients */
+    int32_t                        lens_pos; /**< AF lens position. Represents precise
+                                                physical location of the lens along its focus travel,
+                                                if min and max are correctly tuned. */
 } uguzzi_sensor_settings_t;
 
 /** uGUZZI output - Sensor frame settings as package for all channels */
@@ -208,6 +217,7 @@ typedef struct {
     uint32_t d_params[UGUZZI_PAR_DYN_COMMON_NUMBER];
     uint32_t aec_info[32];
     uint32_t aglbce_info[32];
+    uint32_t af_info[32];
 } uguzzi_metadata_t;
 
 /**

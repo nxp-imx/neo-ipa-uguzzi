@@ -62,6 +62,8 @@ typedef enum {
                                 - 0 DTP control, coefficient value overwriting DTP */
     CMD_AGLBCE_PROCESSING_MODE, /**< 0 NORMAL / 1 LOCK / 2 DISABLE CD->aglbce_processing_mode */
     CMD_MIN_FPS, /**< Minimum FPS - requires value > 0   CD->min_fps */
+    CMD_AF_PROCESSING_MODE,      /**< (74) 0 NORMAL / 1 DISABLE CD->af_processing_mode */
+    CMD_AF_LOG_LEVEL, /**< 0 NONE(No logs) / 1 FATAL(the default) / 2 ALL CD->af_log_level */
     CMD_ALGO_RECONFIG       = 399,
     /** enumerate of custom static CAR parameters supported via DTP */
     CMD_CUSTOM_STAT_PARAM_0 = 400,
