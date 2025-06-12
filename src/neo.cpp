@@ -484,6 +484,11 @@ int IPANxpNeo::setUguzziInitialConfig()
 	cfg.config_val = UGUZZI_LFM_MODE_OFF;
 	err |= uguzzi_config(&cfg);
 
+	/* Disable the uGuzzi AF processing (0: normal, 1: disabled) */
+	cfg.config_id = CMD_AF_PROCESSING_MODE;
+	cfg.config_val = 1;
+	err |= uguzzi_config(&cfg);
+
 	/*
 	 * Raise the flag even if none of the above configs succeeded.
 	 * A config that changes the value of a static parameter might
