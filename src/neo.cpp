@@ -407,7 +407,9 @@ int IPANxpNeo::checkDTPConfig(const IPACameraSensorInfo &sensorInfo)
 	 * \todo make sure this matches what is in uguzzi_cam_info and sensorInfo.cfaPattern
 	 * However sensorInfo.cfaPattern doesn't seem to support RGBIr yet.
 	 */
-	uguzzi_cam_info_cfa_t sensorBayerPattern;
+
+	/* set sensorBayerPattern to a default value */
+	uguzzi_cam_info_cfa_t sensorBayerPattern = UGUZZI_CAM_INFO_CFA_RGrGbB;
 	const uguzzi_cam_info_cfa_t camInfoPattern =
 		static_cast<uguzzi_cam_info_cfa_t>(
 			camInfoDtp_[channel_]->frame1_cfg.cfa);
