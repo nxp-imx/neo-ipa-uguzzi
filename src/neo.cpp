@@ -95,6 +95,7 @@ public:
 	int configure(const IPAConfigInfo &ipaConfig,
 		      const std::map<uint32_t, IPAStream> &streamConfig,
 		      const IPAModeType mode,
+		      const IPAColorSpace &colorSpace,
 		      ControlInfoMap *ipaControls) override;
 	void mapBuffers(const std::vector<IPABuffer> &buffers) override;
 	void unmapBuffers(const std::vector<unsigned int> &ids) override;
@@ -1069,6 +1070,7 @@ void IPANxpNeo::stop()
 int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 			 const std::map<uint32_t, IPAStream> &streamConfig,
 			 [[maybe_unused]] const IPAModeType mode,
+			 [[maybe_unused]] const IPAColorSpace &colorSpace,
 			 ControlInfoMap *ipaControls)
 {
 	int ret = 0;
