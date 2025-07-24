@@ -22,15 +22,15 @@ Added
 -------
 
 * Support for the os08a20 sensor 3840x2160 - 12bpp mode
-* Add configuration file config.yaml with sensor configuration defined by user
+* Add configuration file config_ipa_uguzzi.yaml with sensor configuration defined by user
 
 Changed
 -------
 
 * Change the ox03c10 sensor HDR mode to HDR4 - 4 exposures (versus HDR3)
-* The socket port number has changed and is defined per sensor entry in config.yaml​
-* Any new additional sensor support should have its model or entity entry in config.yaml
-* The sensor to connect with Tuning Tool can be configured using the "entity-filter" setting​ from config.yaml
+* The socket port number has changed and is defined per sensor entry in config_ipa_uguzzi.yaml
+* Any new additional sensor support should have its model or entity entry in config_ipa_uguzzi.yaml
+* The sensor to connect with Tuning Tool can be configured using the "entity-filter" setting​ from config_ipa_uguzzi.yaml
 * The subset of parameters INALIGN and LPALIGN from the Pipeline Configuration ISP block is now applied to the ISP. For consistency, DTPs MUST now be configured with those parameters as follows:​
    * Update flag for PIPE_CONF set to "ON_CONFIG"​
    * INALIGN0/1 set to 1 (MSB aligned) - ISI hardware constraint​

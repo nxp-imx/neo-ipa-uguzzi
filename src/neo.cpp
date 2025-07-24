@@ -94,14 +94,16 @@ public:
 
 	int configure(const IPAConfigInfo &ipaConfig,
 		      const std::map<uint32_t, IPAStream> &streamConfig,
+		      const IPAModeType mode,
+		      const IPAColorSpace &colorSpace,
 		      ControlInfoMap *ipaControls) override;
 	void mapBuffers(const std::vector<IPABuffer> &buffers) override;
 	void unmapBuffers(const std::vector<unsigned int> &ids) override;
 
 	void queueRequest(const uint32_t frame, const ControlList &controls) override;
-	void computeParams(const uint32_t frame,
+	void computeParams(const uint32_t frame, const IPAContextType context,
 			   const std::map<uint32_t, uint32_t> &bufferIds) override;
-	void processStats(const uint32_t frame,
+	void processStats(const uint32_t frame, const IPAContextType context,
 			  const std::map<uint32_t, uint32_t> &bufferIds,
 			  const ControlList &sensorControls) override;
 
@@ -139,7 +141,7 @@ private:
 			  uguzzi_sensor_settings_pkg_t *sensorSettingsPkg,
 			  uguzzi_isp_settings_pkg_t *ispSettingsPkg);
 
-	void setControls(unsigned int frame);
+	void setControls(unsigned int frame, IPAContextType context);
 	bool libcameraCfa2UguzziBayerPattern(uint32_t cfa,
 					     uguzzi_cam_info_cfa_t *pattern);
 	std::string controlListToString(const ControlList *ctrls) const;
@@ -407,7 +409,9 @@ int IPANxpNeo::checkDTPConfig(const IPACameraSensorInfo &sensorInfo)
 	 * \todo make sure this matches what is in uguzzi_cam_info and sensorInfo.cfaPattern
 	 * However sensorInfo.cfaPattern doesn't seem to support RGBIr yet.
 	 */
-	uguzzi_cam_info_cfa_t sensorBayerPattern;
+
+	/* set sensorBayerPattern to a default value */
+	uguzzi_cam_info_cfa_t sensorBayerPattern = UGUZZI_CAM_INFO_CFA_RGrGbB;
 	const uguzzi_cam_info_cfa_t camInfoPattern =
 		static_cast<uguzzi_cam_info_cfa_t>(
 			camInfoDtp_[channel_]->frame1_cfg.cfa);
@@ -886,7 +890,7 @@ void IPANxpNeo::processLiveControl(const neoisp_meta_stats_s *stats)
 }
 #endif
 
-void IPANxpNeo::setControls(unsigned int frame)
+void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 {
 	ControlList ctrls(sensorControls_);
 
@@ -925,7 +929,7 @@ void IPANxpNeo::setControls(unsigned int frame)
 	}
 
 	LOG(NxpNeoUguzziIPA, Debug) << logSensorParams(frame, &mdControls_, &ctrls);
-	setSensorControls.emit(frame, ctrls);
+	setSensorControls.emit(frame, context, ctrls);
 }
 
 bool IPANxpNeo::libcameraCfa2UguzziBayerPattern(
@@ -966,7 +970,7 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 	dataDir_ = utils::dirname(settings.configurationFile) + "/uguzzi";
 
 	/* Load IPA configuration */
-	if (loadConfigFile(dataDir_ + "/config.yaml"))
+	if (loadConfigFile(dataDir_ + "/config_ipa_uguzzi.yaml"))
 		return -EINVAL;
 
 	const char *dir = getenv("LIBCAMERA_IPA_UGUZZI_LOG_DIR");
@@ -1054,7 +1058,7 @@ int IPANxpNeo::start()
 		return err;
 	}
 
-	setControls(0);
+	setControls(0, IPAContextTypeRgb);
 
 	return 0;
 }
@@ -1065,6 +1069,8 @@ void IPANxpNeo::stop()
 
 int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 			 const std::map<uint32_t, IPAStream> &streamConfig,
+			 [[maybe_unused]] const IPAModeType mode,
+			 [[maybe_unused]] const IPAColorSpace &colorSpace,
 			 ControlInfoMap *ipaControls)
 {
 	int ret = 0;
@@ -1161,13 +1167,13 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 		LOG(NxpNeoUguzziIPA, Debug)
 			<< "Live Tuning/Control is initialized!";
 #endif
-	CameraMode mode;
-	mode.pixelRate = sensorInfo->pixelRate;
-	mode.minLineLength = sensorInfo->minLineLength;
-	mode.maxLineLength = sensorInfo->maxLineLength;
-	mode.minFrameLength = sensorInfo->minFrameLength;
-	mode.maxFrameLength = sensorInfo->maxFrameLength;
-	camHelper_->setCameraMode(mode);
+	CameraMode cameraMode;
+	cameraMode.pixelRate = sensorInfo->pixelRate;
+	cameraMode.minLineLength = sensorInfo->minLineLength;
+	cameraMode.maxLineLength = sensorInfo->maxLineLength;
+	cameraMode.minFrameLength = sensorInfo->minFrameLength;
+	cameraMode.maxFrameLength = sensorInfo->maxFrameLength;
+	camHelper_->setCameraMode(cameraMode);
 
 	sensorControls_ = ipaConfig.sensorControls;
 	sensorInfo_ = ipaConfig.sensorInfo;
@@ -1201,7 +1207,7 @@ void IPANxpNeo::queueRequest(const uint32_t frame, const ControlList &controls)
 	(void)controls;
 }
 
-void IPANxpNeo::computeParams(const uint32_t frame,
+void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context,
 			      const std::map<uint32_t, uint32_t> &bufferIds)
 {
 	ControlList &controls = mdControls_;
@@ -1215,14 +1221,14 @@ void IPANxpNeo::computeParams(const uint32_t frame,
 	metaDataValid_ = false;
 
 	/* Give access to raw buffer for live tuning */
-	auto input0It = bufferIds.find(TypeInput0);
+	auto input0It = bufferIds.find(IPABufferTypeImage0);
 	rawBufferId_ = input0It != bufferIds.end() ? input0It->second : 0;
 
 	/*
 	 * Look for metadata availability, either from the camera embedded data
 	 * stream or from the pixel data top lines.
 	 */
-	auto eDataIt = bufferIds.find(TypeEData);
+	auto eDataIt = bufferIds.find(IPABufferTypeEData);
 	unsigned int eDataBufferId =
 		eDataIt != bufferIds.end() ? eDataIt->second : 0;
 	if (eDataBufferId && buffers_.count(eDataBufferId)) {
@@ -1250,7 +1256,7 @@ void IPANxpNeo::computeParams(const uint32_t frame,
 			metaDataValid_ = true;
 	}
 
-	auto paramsIter = bufferIds.find(TypeParams);
+	auto paramsIter = bufferIds.find(IPABufferTypeParams);
 	unsigned int paramsBufferId =
 		paramsIter != bufferIds.end() ? paramsIter->second : 0;
 	ASSERT(buffers_.count(paramsBufferId));
@@ -1262,14 +1268,14 @@ void IPANxpNeo::computeParams(const uint32_t frame,
 				      mSensorDataPkg.channel[channel_].l2vs_ratio,
 				      params);
 
-	paramsComputed.emit(frame);
+	paramsComputed.emit(frame, context);
 }
 
-void IPANxpNeo::processStats(const uint32_t frame,
+void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 			     const std::map<uint32_t, uint32_t> &bufferIds,
 			     const ControlList &sensorControls)
 {
-	auto statsIter = bufferIds.find(TypeStats);
+	auto statsIter = bufferIds.find(IPABufferTypeStats);
 	unsigned int statsBufferId =
 		statsIter != bufferIds.end() ? statsIter->second : 0;
 	ASSERT(buffers_.count(statsBufferId));
@@ -1312,12 +1318,21 @@ void IPANxpNeo::processStats(const uint32_t frame,
 		     mSensorSettingsPkg.channel[channel_]->wb.colour_temp);
 	/* add more as needed */
 
-	setControls(frame);
+	/*
+	 * \todo Create IR-specific controls and have relevant algorithms to
+	 *       use them during RGBIr context processing. For now just clear
+	 *       the RGBIr context metadata to avoid merge conflict of the 2
+	 *       contexts metadata being populated with the same controls.
+	 */
+	if (context == IPAContextTypeIr)
+		metadata.clear();
+
+	setControls(frame, context);
 
 #ifdef USE_LIVE_CONTROL
 	processLiveControl(stats);
 #endif
-	metadataReady.emit(frame, metadata);
+	metadataReady.emit(frame, context, metadata);
 }
 
 /**

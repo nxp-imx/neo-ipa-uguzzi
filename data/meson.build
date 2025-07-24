@@ -3,7 +3,7 @@
 conf_files = files([
     'database_mx95mbcam.bin',
     'database_os08a20.bin',
-    'config.yaml',
+    'config_ipa_uguzzi.yaml',
 ])
 
 install_data(conf_files,
