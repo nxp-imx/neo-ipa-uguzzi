@@ -3,6 +3,26 @@
 Change Log
 ==========
 
+Release lf-6.12.34-2.1.0 (September 2025)
+====================================
+
+Associated versions
+-------------------
+
+* IPA release: lf-6.12.34-2.1.0
+* IPA version: UGUZZI_IPA_v0.2.3
+* libcamera release: lf-6.12.34-2.1.0
+* libcamera version: v0.5.1
+* uGuzzi version: 2025. 2.24[1]
+* Tuning Tool version: 0.94.99
+* libuguzzi.so sha256sum: c40fad89151916d01d86d5f857b6c079a00520b59de1a8c8c93774a1943074a3
+* libuguzzi_connect.so sha256sum: 37cddebb75aa12a39cf897ca659ce31c6d7b087396c22d9a17c7ace84e47ac81
+
+Changed
+-------
+
+* Update IPA NEO mojom interface with 2025 Q3 release
+
 Release lf-6.12.20_2.0.0 (June 2025)
 ====================================
 
