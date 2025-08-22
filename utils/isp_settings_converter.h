@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include <linux/nxp_neoisp.h>
+#include "params.h"
 
 extern "C" {
 #include "uguzzi/uguzzi_isp_out.h"
@@ -103,5 +104,5 @@ namespace libcamera::ipa::nxpneo {
 
 void convertUguzziIspCfg2IspDrvCfg(imx9x_isp_cfg_prms_t *cfgParams,
 				   uint32_t longest2ShortestFrameRatio,
-				   neoisp_meta_params_s *neoispMetaParams);
+				   NxpNeoParams *neoispMetaParams);
 }

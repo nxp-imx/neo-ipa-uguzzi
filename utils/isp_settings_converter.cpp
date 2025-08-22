@@ -617,131 +617,155 @@ static void convertVigTable(neoisp_vignetting_table_mem_params_s *neoispVigTable
 
 void convertUguzziIspCfg2IspDrvCfg(imx9x_isp_cfg_prms_t *cfgParams,
 				   uint32_t longest2ShortestFrameRatio,
-				   neoisp_meta_params_s *neoispMetaParams)
+				   NxpNeoParams *params)
 {
-	neoispMetaParams->features_cfg = {};
-	//pipe 1
+	/* pipeline 1 */
 	if (cfgParams->update[PIPE_CONF_CFG]) {
-		convertPipeConf(&neoispMetaParams->regs.pipe_conf, &cfgParams->pipe_conf);
-		neoispMetaParams->features_cfg.pipe_conf_cfg = 1;
+		auto config = params->block<BlockParamsType::PipeConf>();
+		convertPipeConf(config.params(), &cfgParams->pipe_conf);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[HC_CFG]) {
-		convertHc(&neoispMetaParams->regs.head_color, &cfgParams->hc);
-		neoispMetaParams->features_cfg.head_color_cfg = 1;
+		auto config = params->block<BlockParamsType::HeadColor>();
+		convertHc(config.params(), &cfgParams->hc);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[HDR_DECOMPRESS_DCG_CFG]) {
-		convertHdrDecompress0(&neoispMetaParams->regs.decompress_input0,
-				      &cfgParams->decompress_dcg);
-		neoispMetaParams->features_cfg.hdr_decompress_input0_cfg = 1;
+		auto config = params->block<BlockParamsType::HdrDec0>();
+		convertHdrDecompress0(config.params(), &cfgParams->decompress_dcg);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[HDR_DECOMPRESS_VS_CFG]) {
-		convertHdrDecompress1(&neoispMetaParams->regs.decompress_input1, &cfgParams->decompress_vs);
-		neoispMetaParams->features_cfg.hdr_decompress_input1_cfg = 1;
+		auto config = params->block<BlockParamsType::HdrDec1>();
+		convertHdrDecompress1(config.params(), &cfgParams->decompress_vs);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[HDR_MERGE_CFG]) {
-		convertHdrMerge(&neoispMetaParams->regs.hdr_merge, &cfgParams->hdr_merge);
-		neoispMetaParams->features_cfg.hdr_merge_cfg = 1;
+		auto config = params->block<BlockParamsType::HdrMerge>();
+		convertHdrMerge(config.params(), &cfgParams->hdr_merge);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[RGBIR_CFG] || cfgParams->update[RGBIR_STAT_CFG]) {
-		convertRgbir(&neoispMetaParams->regs.rgbir,
+		auto config = params->block<BlockParamsType::RgbIr>();
+		convertRgbir(config.params(),
 			     &cfgParams->rgbir,
 			     longest2ShortestFrameRatio);
-		convertRgbirStat(&cfgParams->rgbir_stat, &neoispMetaParams->regs.rgbir);
-		neoispMetaParams->features_cfg.rgbir_cfg = 1;
+		convertRgbirStat(&cfgParams->rgbir_stat, config.params());
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[STAT_CFG]) {
-		convertStat(&neoispMetaParams->regs.stat, &cfgParams->stat);
-		neoispMetaParams->features_cfg.stat_cfg = 1;
+		auto config = params->block<BlockParamsType::Stat>();
+		convertStat(config.params(), &cfgParams->stat);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[IR_COMPRESS_CFG]) {
-		convertIrCompress(&neoispMetaParams->regs.ir_compress, &cfgParams->ir_compress);
-		neoispMetaParams->features_cfg.ir_compress_cfg = 1;
+		auto config = params->block<BlockParamsType::IrComp>();
+		convertIrCompress(config.params(), &cfgParams->ir_compress);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[BNR_CFG]) {
-		convertBNR(&neoispMetaParams->regs.bnr, &cfgParams->bnr);
-		neoispMetaParams->features_cfg.bnr_cfg = 1;
+		auto config = params->block<BlockParamsType::Bnr>();
+		convertBNR(config.params(), &cfgParams->bnr);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[VIGNETTING_CTRL_CFG]) {
-		convertVignettingCtrl(&neoispMetaParams->regs.vignetting_ctrl,
-				      &cfgParams->vignetting_ctrl);
-		neoispMetaParams->features_cfg.vignetting_ctrl_cfg = 1;
+		auto config = params->block<BlockParamsType::VigCtrl>();
+		convertVignettingCtrl(config.params(), &cfgParams->vignetting_ctrl);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[VIGNETTING_LUT_CFG]) {
-		convertVigTable(&neoispMetaParams->mems.vt, &cfgParams->vignetting_lut);
-		neoispMetaParams->features_cfg.vignetting_table_cfg = 1;
+		auto config = params->block<BlockParamsType::VigTable>();
+		convertVigTable(config.params(), &cfgParams->vignetting_lut);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[CTEMP_CFG] || cfgParams->update[CTEMP_CSC_CFG] || cfgParams->update[CTEMP_GR_VS_GB_CFG]) {
-		convertCtemp(&neoispMetaParams->regs.ctemp, &cfgParams->ctemp, &cfgParams->ctemp_csc, &cfgParams->ctemp_gr_vs_gb);
-		neoispMetaParams->features_cfg.ctemp_cfg = 1;
+		auto config = params->block<BlockParamsType::CTemp>();
+		convertCtemp(config.params(), &cfgParams->ctemp, &cfgParams->ctemp_csc, &cfgParams->ctemp_gr_vs_gb);
+		config.setUpdate(true);
 	}
 	static_assert(NEO_OBWB_CNT == 3, "Expected NEO_OBWB_CNT to be 3");
 	if (cfgParams->update[OBWB_BLC_DCG_CFG] || cfgParams->update[OBWB_CTRL_CFG] || cfgParams->update[OBWB_WB_GAINS_DCG_CFG]) {
-		convertObwbDcg(&neoispMetaParams->regs.obwb[0], &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_dcg, &cfgParams->obwb_wb_gains_dcg);
-		neoispMetaParams->features_cfg.obwb0_cfg = 1;
+		auto config = params->block<BlockParamsType::Obwb0>();
+		convertObwbDcg(config.params(), &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_dcg, &cfgParams->obwb_wb_gains_dcg);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[OBWB_BLC_VS_CFG] || cfgParams->update[OBWB_CTRL_CFG] || cfgParams->update[OBWB_WB_GAINS_VS_CFG]) {
-		convertObwbVs(&neoispMetaParams->regs.obwb[1], &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_vs, &cfgParams->obwb_wb_gains_vs);
-		neoispMetaParams->features_cfg.obwb1_cfg = 1;
+		auto config = params->block<BlockParamsType::Obwb1>();
+		convertObwbVs(config.params(), &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_vs, &cfgParams->obwb_wb_gains_vs);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[OBWB_BLC_HDR_CFG] || cfgParams->update[OBWB_CTRL_CFG] || cfgParams->update[OBWB_WB_GAINS_HDR_CFG]) {
-		convertObwbHdr(&neoispMetaParams->regs.obwb[2], &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_hdr, &cfgParams->obwb_wb_gains_hdr);
-		neoispMetaParams->features_cfg.obwb2_cfg = 1;
+		auto config = params->block<BlockParamsType::Obwb2>();
+		convertObwbHdr(config.params(), &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_hdr, &cfgParams->obwb_wb_gains_hdr);
+		config.setUpdate(true);
 	}
-	//pipe 2
+	/* Pipeline 2 */
 	if (cfgParams->update[DEMOSAIC_CFG]) {
-		convertDemosaic(&neoispMetaParams->regs.demosaic, &cfgParams->demosaic);
-		neoispMetaParams->features_cfg.demosaic_cfg = 1;
+		auto config = params->block<BlockParamsType::Demosaic>();
+		convertDemosaic(config.params(), &cfgParams->demosaic);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[RGB2YUV_CFG] || cfgParams->update[CCM_CFG]) {
-		convertRgb2yuv(&neoispMetaParams->regs.rgb2yuv, &cfgParams->rgb2yuv, &cfgParams->ccm);
-		neoispMetaParams->features_cfg.rgb2yuv_cfg = 1;
+		auto config = params->block<BlockParamsType::Rgb2Yuv>();
+		convertRgb2yuv(config.params(), &cfgParams->rgb2yuv, &cfgParams->ccm);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[DRC_ALPHA_BLENDING_CFG] || cfgParams->update[DRC_GLOBAL_TONEMAP_CTRL_CFG] || cfgParams->update[DRC_LOCAL_TONEMAP_CTRL_CFG] || cfgParams->update[DRC_GLOBAL_GAIN_FACTOR_CFG] || cfgParams->update[DRC_LOCAL_STRETCH_OFFSET_CFG]) {
-		convertDrc(&neoispMetaParams->regs.drc, &cfgParams->drc_alpha_blending, &cfgParams->drc_global_tonemap_ctrl, &cfgParams->drc_local_tonemap_ctrl, &cfgParams->drc_global_gain_factor, &cfgParams->drc_local_stretch_offset);
-		neoispMetaParams->features_cfg.dr_comp_cfg = 1;
+		auto config = params->block<BlockParamsType::DrComp>();
+		convertDrc(config.params(), &cfgParams->drc_alpha_blending, &cfgParams->drc_global_tonemap_ctrl, &cfgParams->drc_local_tonemap_ctrl, &cfgParams->drc_global_gain_factor, &cfgParams->drc_local_stretch_offset);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[DRC_GLOBAL_TONEMAP_LUT_CFG]) {
-		convertDrcGlobal(&neoispMetaParams->mems.gtm, &cfgParams->drc_global_tonemap_lut);
-		neoispMetaParams->features_cfg.drc_global_tonemap_cfg = 1;
+		auto config = params->block<BlockParamsType::DrcGlobalTonemap>();
+		convertDrcGlobal(config.params(), &cfgParams->drc_global_tonemap_lut);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[DRC_LOCAL_TONEMAP_LUT_CFG]) {
-		convertDrcLocal(&neoispMetaParams->mems.ltm, &cfgParams->drc_local_tonemap_lut);
-		neoispMetaParams->features_cfg.drc_local_tonemap_cfg = 1;
+		auto config = params->block<BlockParamsType::DrcLocalTonemap>();
+		convertDrcLocal(config.params(), &cfgParams->drc_local_tonemap_lut);
+		config.setUpdate(true);
 	}
-	//pipe 3
+	/* Denoising Pipeline */
 	if (cfgParams->update[NR_CFG]) {
-		convertNr(&neoispMetaParams->regs.nrc, &cfgParams->nr);
-		neoispMetaParams->features_cfg.nr_cfg = 1;
+		auto config = params->block<BlockParamsType::Nr>();
+		convertNr(config.params(), &cfgParams->nr);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[AUTOFOCUS_CFG]) {
-		convertAf(&neoispMetaParams->regs.afc, &cfgParams->autofocus);
-		neoispMetaParams->features_cfg.af_cfg = 1;
+		auto config = params->block<BlockParamsType::Af>();
+		convertAf(config.params(), &cfgParams->autofocus);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[EE_CFG]) {
-		convertEe(&neoispMetaParams->regs.eec, &cfgParams->ee);
-		neoispMetaParams->features_cfg.ee_cfg = 1;
+		auto config = params->block<BlockParamsType::Ee>();
+		convertEe(config.params(), &cfgParams->ee);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[DF_CFG]) {
-		convertDf(&neoispMetaParams->regs.dfc, &cfgParams->df);
-		neoispMetaParams->features_cfg.df_cfg = 1;
+		auto config = params->block<BlockParamsType::Df>();
+		convertDf(config.params(), &cfgParams->df);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[CONVMED_CFG]) {
-		convertConvmed(&neoispMetaParams->regs.convf, &cfgParams->convmed);
-		neoispMetaParams->features_cfg.convmed_cfg = 1;
+		auto config = params->block<BlockParamsType::Convmed>();
+		convertConvmed(config.params(), &cfgParams->convmed);
+		config.setUpdate(true);
 	}
 	if (cfgParams->update[CAS_CFG]) {
-		convertCas(&neoispMetaParams->regs.cas, &cfgParams->cas);
-		neoispMetaParams->features_cfg.cas_cfg = 1;
+		auto config = params->block<BlockParamsType::Cas>();
+		convertCas(config.params(), &cfgParams->cas);
+		config.setUpdate(true);
 	}
 	const bool gcmUpdated =
 		cfgParams->update[GCM_INPUT_CSC_CFG] != 0 ||
 		cfgParams->update[GCM_GAMMA_CFG] != 0 ||
 		cfgParams->update[GCM_OUTPUT_CSC_CFG] != 0;
 	if (gcmUpdated) {
-		convertGcmInputCsc(&neoispMetaParams->regs.gcm, &cfgParams->gcm_input_csc);
-		convertGcmGamma(&neoispMetaParams->regs.gcm, &cfgParams->gcm_gamma);
-		convertGcmOutputCsc(&neoispMetaParams->regs.gcm, &cfgParams->gcm_output_csc);
-		neoispMetaParams->features_cfg.gcm_cfg = 1;
+		auto config = params->block<BlockParamsType::Gcm>();
+		convertGcmInputCsc(config.params(), &cfgParams->gcm_input_csc);
+		convertGcmGamma(config.params(), &cfgParams->gcm_gamma);
+		convertGcmOutputCsc(config.params(), &cfgParams->gcm_output_csc);
+		config.setUpdate(true);
 	}
 }
 
