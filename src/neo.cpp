@@ -32,6 +32,8 @@
 #include "cam_helper/camera_helper.h"
 #include "utils/isp_settings_converter.h"
 #include "utils/neo_config.h"
+#include "utils/params.h"
+#include "utils/stats.h"
 
 #include "dtp.h"
 #include "version.h"
@@ -134,7 +136,7 @@ private:
 				   const neoisp_ctemp_reg_stats_s *ctempRegs,
 				   const neoisp_ctemp_mem_stats_s *ctempMems,
 				   awb_statistics_data_hw_t *outAwbData);
-	void prepareUguzziStats(const neoisp_meta_stats_s *stats);
+	void prepareUguzziStats(const NxpNeoStats *stats);
 
 	int processUguzzi(uguzzi_sensor_data_pkg_t *sensorDataPkg,
 			  uguzzi_stats_data_pkg_t *statsDataPkg,
@@ -155,7 +157,7 @@ private:
 	bool isYuvFormat(const PixelFormat &format) const;
 	bool isMonochrome(const PixelFormat &format) const;
 #ifdef USE_LIVE_CONTROL
-	void processLiveControl(const neoisp_meta_stats_s *stats);
+	void processLiveControl(const NxpNeoStats *stats);
 #endif
 	int loadConfigFile(const std::string &filename);
 
@@ -173,6 +175,9 @@ private:
 	uint8_t channel_;
 	std::string sensorModel_;
 	std::string sensorEntity_;
+
+	/* apiVersion for metadata accesses */
+	uint32_t apiVersion_;
 
 	/*
 	 * This flag indicates if IPA init has been enabled or skipped.
@@ -814,23 +819,26 @@ void IPANxpNeo::prepareUguzziAwbStats(imx9x_isp_awb_stats_type_t statType,
 	}
 }
 
-void IPANxpNeo::prepareUguzziStats(const neoisp_meta_stats_s *stats)
+void IPANxpNeo::prepareUguzziStats(const NxpNeoStats *stats)
 {
+	auto rgbirStats = stats->block<BlockStatsType::MRgbIr>();
+	auto histStats = stats->block<BlockStatsType::MHist>();
 	prepareUguzziAecHistograms(&mIspSettings[channel_],
-				   &stats->mems.rgbir,
-				   &stats->mems.hist,
+				   rgbirStats.stats(),
+				   histStats.stats(),
 				   &mAeHistData[channel_]);
+
+	auto ctempRegStats = stats->block<BlockStatsType::RCTemp>();
+	auto ctempMemStats = stats->block<BlockStatsType::MCTemp>();
 	prepareUguzziAwbStats(mAwbStatType[channel_],
-			      &stats->regs.ct,
-			      &stats->mems.ctemp,
+			      ctempRegStats.stats(),
+			      ctempMemStats.stats(),
 			      &mAwbStatsData[channel_]);
 
-	mAgblbceStats[channel_].global_hist_roi0 =
-		stats->mems.drc.drc_global_hist_roi0;
-	mAgblbceStats[channel_].global_hist_roi1 =
-		stats->mems.drc.drc_global_hist_roi1;
-	mAgblbceStats[channel_].local_stats =
-		stats->mems.drc.drc_local_sum;
+	auto drcMemStats = stats->block<BlockStatsType::MDrc>();
+	mAgblbceStats[channel_].global_hist_roi0 = drcMemStats->drc_global_hist_roi0;
+	mAgblbceStats[channel_].global_hist_roi1 = drcMemStats->drc_global_hist_roi1;
+	mAgblbceStats[channel_].local_stats = drcMemStats->drc_local_sum;
 
 	mStatsDataPkg.channel[channel_].stats_type = HW_STATS;
 	mStatsDataPkg.channel[channel_].valid = 1;
@@ -856,7 +864,7 @@ int IPANxpNeo::processUguzzi(uguzzi_sensor_data_pkg_t *sensorDataPkg,
 }
 
 #ifdef USE_LIVE_CONTROL
-void IPANxpNeo::processLiveControl(const neoisp_meta_stats_s *stats)
+void IPANxpNeo::processLiveControl(const NxpNeoStats *stats)
 {
 	/* \todo Use it when embedded data is not part of the RAW image */
 	EmbeddedDataPkg embDataPkg = {};
@@ -967,6 +975,8 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 {
 	sensorModel_ = settings.sensorModel;
 	sensorEntity_ = params.sensorEntity;
+	apiVersion_ = params.apiVersion;
+
 	dataDir_ = utils::dirname(settings.configurationFile) + "/uguzzi";
 
 	/* Load IPA configuration */
@@ -1260,15 +1270,14 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 	unsigned int paramsBufferId =
 		paramsIter != bufferIds.end() ? paramsIter->second : 0;
 	ASSERT(buffers_.count(paramsBufferId));
-	neoisp_meta_params_s *params = reinterpret_cast<neoisp_meta_params_s *>(
-		buffers_.at(paramsBufferId).planes()[0].data());
+	NxpNeoParams params(apiVersion_,
+			    buffers_.at(paramsBufferId).planes()[0]);
 
-	params->frame_id = 0;
 	convertUguzziIspCfg2IspDrvCfg(&mIspSettingsPkg.isp_config[channel_]->isp_cfg_params[0],
 				      mSensorDataPkg.channel[channel_].l2vs_ratio,
-				      params);
+				      &params);
 
-	paramsComputed.emit(frame, context);
+	paramsComputed.emit(frame, context, params.size());
 }
 
 void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
@@ -1280,8 +1289,8 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 		statsIter != bufferIds.end() ? statsIter->second : 0;
 	ASSERT(buffers_.count(statsBufferId));
 
-	const neoisp_meta_stats_s *stats = reinterpret_cast<const neoisp_meta_stats_s *>(
-		buffers_.at(statsBufferId).planes()[0].data());
+	const NxpNeoStats stats(apiVersion_,
+				buffers_.at(statsBufferId).planes()[0]);
 
 	ControlList &controls = mdControls_;
 
@@ -1302,7 +1311,7 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 
 	prepareUguzziSensorData();
 
-	prepareUguzziStats(stats);
+	prepareUguzziStats(&stats);
 
 	int err = processUguzzi(&mSensorDataPkg,
 				&mStatsDataPkg,
@@ -1330,7 +1339,7 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 	setControls(frame, context);
 
 #ifdef USE_LIVE_CONTROL
-	processLiveControl(stats);
+	processLiveControl(&stats);
 #endif
 	metadataReady.emit(frame, context, metadata);
 }
