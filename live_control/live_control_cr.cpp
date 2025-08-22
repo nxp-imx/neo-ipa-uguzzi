@@ -238,51 +238,55 @@ void LiveControlCr::copyImgData(const uguzzi_sensor_data_t *sensorData,
  * This function processes any user action linked with CR1.
  * At a valid detected action, the ISP statistics are copied into the CR1 memory region.
  */
-void LiveControlCr::processCr1(const neoisp_meta_stats_s *stats)
+void LiveControlCr::processCr1(const NxpNeoStats *stats)
 {
 	ASSERT(stats);
 
 	if (cr1Ctrl_.uflags == LTEU_DO_NOTHING)
 		return;
 
-	const neoisp_mem_stats_s *mems = &stats->mems;
+	auto ctempMemStats = stats->block<BlockStatsType::MCTemp>();
 	memcpy(ispOutputData_.BLK_STAT_R,
-	       mems->ctemp.ctemp_r_sum,
-	       sizeof(mems->ctemp.ctemp_r_sum));
+	       ctempMemStats->ctemp_r_sum,
+	       sizeof(ctempMemStats->ctemp_r_sum));
 	memcpy(ispOutputData_.BLK_STAT_G,
-	       mems->ctemp.ctemp_g_sum,
-	       sizeof(mems->ctemp.ctemp_g_sum));
+	       ctempMemStats->ctemp_g_sum,
+	       sizeof(ctempMemStats->ctemp_g_sum));
 	memcpy(ispOutputData_.BLK_STAT_B,
-	       mems->ctemp.ctemp_b_sum,
-	       sizeof(mems->ctemp.ctemp_b_sum));
+	       ctempMemStats->ctemp_b_sum,
+	       sizeof(ctempMemStats->ctemp_b_sum));
 	memcpy(ispOutputData_.BLK_STAT_CNT,
-	       mems->ctemp.ctemp_pix_cnt,
-	       sizeof(mems->ctemp.ctemp_pix_cnt));
+	       ctempMemStats->ctemp_pix_cnt,
+	       sizeof(ctempMemStats->ctemp_pix_cnt));
 
+	auto rgbirMemStats = stats->block<BlockStatsType::MRgbIr>();
 	memcpy(ispOutputData_.RGBIR_HISTOGRAM,
-	       mems->rgbir.rgbir_hist,
-	       sizeof(mems->rgbir.rgbir_hist));
+	       rgbirMemStats->rgbir_hist,
+	       sizeof(rgbirMemStats->rgbir_hist));
+
+	auto histMemStats = stats->block<BlockStatsType::MHist>();
 	memcpy(ispOutputData_.HISTOGRAM_STATISTICS,
-	       mems->hist.hist_stat,
-	       sizeof(mems->hist.hist_stat));
+	       histMemStats->hist_stat,
+	       sizeof(histMemStats->hist_stat));
 
+	auto drcMemStats = stats->block<BlockStatsType::MDrc>();
 	memcpy(ispOutputData_.DRC_LOCAL_SUM,
-	       mems->drc.drc_local_sum,
-	       sizeof(mems->drc.drc_local_sum));
+	       drcMemStats->drc_local_sum,
+	       sizeof(drcMemStats->drc_local_sum));
 	memcpy(ispOutputData_.DRC_GLOBAL_HIST_ROI0,
-	       mems->drc.drc_global_hist_roi0,
-	       sizeof(mems->drc.drc_global_hist_roi0));
+	       drcMemStats->drc_global_hist_roi0,
+	       sizeof(drcMemStats->drc_global_hist_roi0));
 	memcpy(ispOutputData_.DRC_GLOBAL_HIST_ROI1,
-	       mems->drc.drc_global_hist_roi1,
-	       sizeof(mems->drc.drc_global_hist_roi1));
+	       drcMemStats->drc_global_hist_roi1,
+	       sizeof(drcMemStats->drc_global_hist_roi1));
 
-	const neoisp_reg_stats_s *regs = &stats->regs;
-	ispOutputData_.ctemp_gr_vs_gb_stats.pixel_count = regs->ct.gr_gb_cnt_cnt;
-	ispOutputData_.ctemp_gr_vs_gb_stats.gr_sum = regs->ct.gr_sum_sum;
-	ispOutputData_.ctemp_gr_vs_gb_stats.gb_sum = regs->ct.gb_sum_sum;
-	ispOutputData_.ctemp_gr_vs_gb_stats.gr_squared_sum = regs->ct.gr2_sum_sum;
-	ispOutputData_.ctemp_gr_vs_gb_stats.gb_squared_sum = regs->ct.gb2_sum_sum;
-	ispOutputData_.ctemp_gr_vs_gb_stats.gr_times_gb_sum = regs->ct.grgb_sum_sum;
+	auto ctempRegStats = stats->block<BlockStatsType::RCTemp>();
+	ispOutputData_.ctemp_gr_vs_gb_stats.pixel_count = ctempRegStats->gr_gb_cnt_cnt;
+	ispOutputData_.ctemp_gr_vs_gb_stats.gr_sum = ctempRegStats->gr_sum_sum;
+	ispOutputData_.ctemp_gr_vs_gb_stats.gb_sum = ctempRegStats->gb_sum_sum;
+	ispOutputData_.ctemp_gr_vs_gb_stats.gr_squared_sum = ctempRegStats->gr2_sum_sum;
+	ispOutputData_.ctemp_gr_vs_gb_stats.gb_squared_sum = ctempRegStats->gb2_sum_sum;
+	ispOutputData_.ctemp_gr_vs_gb_stats.gr_times_gb_sum = ctempRegStats->grgb_sum_sum;
 
 	if (cr1Ctrl_.uflags == LTEU_READ_ONCE)
 		cr1Ctrl_.uflags = LTEU_DO_NOTHING;
@@ -330,7 +334,7 @@ void LiveControlCr::processCr2(const uguzzi_sensor_data_t *sensorData,
 void LiveControlCr::handleLiveControlCmdCr(const uguzzi_sensor_data_t *sensorData,
 					   const EmbeddedData *embData,
 					   const ImageBufferViewSet *imageBuffs,
-					   const neoisp_meta_stats_s *ispStats)
+					   const NxpNeoStats *ispStats)
 {
 	processCr1(ispStats);
 	processCr2(sensorData, embData, imageBuffs);

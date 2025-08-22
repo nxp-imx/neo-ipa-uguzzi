@@ -12,6 +12,8 @@
 
 #include <linux/nxp_neoisp.h>
 
+#include "utils/stats.h"
+
 extern "C" {
 #include "uguzzi/uguzzi.h"
 }
@@ -90,14 +92,14 @@ public:
 	void handleLiveControlCmdCr(const uguzzi_sensor_data_t *sensorData,
 				    const EmbeddedData *embData,
 				    const ImageBufferViewSet *imageBuffs,
-				    const neoisp_meta_stats_s *ispStats);
+				    const NxpNeoStats *stats);
 
 	void deinitLiveControlCr() {}
 
 private:
 	int initLiveControlCr1();
 	int initLiveControlCr2(uint32_t maxImgWidth, uint32_t maxImgHeight);
-	void processCr1(const neoisp_meta_stats_s *stats);
+	void processCr1(const NxpNeoStats *stats);
 	void processCr2(const uguzzi_sensor_data_t *sensorData,
 			const EmbeddedData *embData,
 			const ImageBufferViewSet *imageBuffs);
