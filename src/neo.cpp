@@ -234,6 +234,16 @@ private:
 	const TuningInfo *tuningInfo_;
 	/* Directory path containing the configuration files for the IPA */
 	std::string dataDir_;
+
+	/* Map between the IPA stream mode and the cameraHelper stream mode. */
+	static const std::map<const IPAModeType, SensorStreamModes> kSensorStreamModeMap;
+};
+
+const std::map<const IPAModeType, SensorStreamModes> IPANxpNeo::kSensorStreamModeMap = {
+	{ IPAModeTypeStandard, SensorStreamStandard },
+	{ IPAModeTypeHdrMerge, SensorStreamHdr },
+	{ IPAModeTypeRgbIr, SensorStreamRgbIr },
+	{ IPAModeTypeRgbIrDual, SensorStreamDualContext },
 };
 
 namespace {
@@ -1086,7 +1096,7 @@ void IPANxpNeo::stop()
 
 int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 			 const std::map<uint32_t, IPAStream> &streamConfig,
-			 [[maybe_unused]] const IPAModeType mode,
+			 const IPAModeType mode,
 			 [[maybe_unused]] const IPAColorSpace &colorSpace,
 			 ControlInfoMap *ipaControls)
 {
@@ -1190,6 +1200,19 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	cameraMode.maxLineLength = sensorInfo->maxLineLength;
 	cameraMode.minFrameLength = sensorInfo->minFrameLength;
 	cameraMode.maxFrameLength = sensorInfo->maxFrameLength;
+	cameraMode.bitdepth = sensorInfo->bitsPerPixel;
+	cameraMode.width = sensorInfo->outputSize.width;
+	cameraMode.height = sensorInfo->outputSize.height;
+	auto iter = kSensorStreamModeMap.find(mode);
+	if (iter != kSensorStreamModeMap.end()) {
+		cameraMode.streamMode = iter->second;
+	} else {
+		cameraMode.streamMode = SensorStreamStandard;
+		LOG(NxpNeoUguzziIPA, Warning)
+			<< "No sensor stream mode found for pipeline mode: "
+			<< mode
+			<< " - Default mode is used: " << cameraMode.streamMode;
+	}
 	camHelper_->setCameraMode(cameraMode);
 
 	sensorControls_ = ipaConfig.sensorControls;

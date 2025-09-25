@@ -190,7 +190,11 @@ void CameraHelper::setCameraMode(const CameraMode &mode)
 		<< mode.minLineLength << "/" << mode.maxLineLength
 		<< ") Frame length (min/max) ("
 		<< mode.minFrameLength << "/" << mode.maxFrameLength
-		<< ") Line duration " << lineDuration();
+		<< ") Line duration " << lineDuration()
+		<< " Bit depth " << mode.bitdepth
+		<< " Width " << mode.width
+		<< " Height " << mode.height
+		<< " StreamMode " << mode.streamMode;
 }
 
 /**
