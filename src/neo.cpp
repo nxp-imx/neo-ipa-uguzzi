@@ -169,7 +169,8 @@ private:
 	bool metaDataValid_{ false };
 	IPACameraSensorInfo sensorInfo_;
 
-	uint32_t rawBufferId_;
+	uint32_t rawImage0BufferId_;
+	uint32_t rawImage1BufferId_;
 
 	uint16_t cameraCnt_;
 	uint8_t channel_;
@@ -887,13 +888,23 @@ void IPANxpNeo::processLiveControl(const NxpNeoStats *stats)
 	IspStatisticsPkg ispStatPkg = {};
 	LiveControl &liveCtrl = LiveControl::getInstance();
 
-	if (buffers_.count(rawBufferId_)) {
+	if (buffers_.count(rawImage0BufferId_)) {
 		const MappedBuffer::Plane &rawBufferPlane =
-			buffers_.at(rawBufferId_).planes()[0];
+			buffers_.at(rawImage0BufferId_).planes()[0];
 
 		imgBuffViewSetPkg.channel[channel_].view[IMAGE_BUFFER_DCG].data =
 			static_cast<const void *>(rawBufferPlane.data());
 		imgBuffViewSetPkg.channel[channel_].view[IMAGE_BUFFER_DCG].size =
+			static_cast<uint32_t>(rawBufferPlane.size_bytes());
+	}
+
+	if (buffers_.count(rawImage1BufferId_)) {
+		const MappedBuffer::Plane &rawBufferPlane =
+			buffers_.at(rawImage1BufferId_).planes()[0];
+
+		imgBuffViewSetPkg.channel[channel_].view[IMAGE_BUFFER_VS].data =
+			static_cast<const void *>(rawBufferPlane.data());
+		imgBuffViewSetPkg.channel[channel_].view[IMAGE_BUFFER_VS].size =
 			static_cast<uint32_t>(rawBufferPlane.size_bytes());
 	}
 
@@ -1263,9 +1274,11 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 	size_t metaSize = 0;
 	metaDataValid_ = false;
 
-	/* Give access to raw buffer for live tuning */
+	/* Give access to raw buffers for live tuning */
 	auto input0It = bufferIds.find(IPABufferTypeImage0);
-	rawBufferId_ = input0It != bufferIds.end() ? input0It->second : 0;
+	rawImage0BufferId_ = input0It != bufferIds.end() ? input0It->second : 0;
+	auto input1It = bufferIds.find(IPABufferTypeImage1);
+	rawImage1BufferId_ = input1It != bufferIds.end() ? input1It->second : 0;
 
 	/*
 	 * Look for metadata availability, either from the camera embedded data
@@ -1279,18 +1292,16 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 			buffers_.at(eDataBufferId).planes()[0];
 		metaData = plane.data();
 		metaSize = plane.size_bytes();
-	} else {
-		if (rawBufferId_ && buffers_.count(rawBufferId_)) {
-			const MappedBuffer::Plane &plane =
-				buffers_.at(rawBufferId_).planes()[0];
-			metaData = plane.data();
-			uint32_t topLines =
-				camHelper_->attributes()->mdParams.topLines;
-			unsigned int bpp = sensorInfo_.bitsPerPixel;
-			size_t bytepp = bpp <= 8 ? sizeof(uint8_t) : sizeof(uint16_t);
-			unsigned int width = sensorInfo_.outputSize.width;
-			metaSize = topLines * width * bytepp;
-		}
+	} else if (rawImage0BufferId_ && buffers_.count(rawImage0BufferId_)) {
+		/* For now, embedded data is only supported from the raw Image0. */
+		const MappedBuffer::Plane &plane =
+			buffers_.at(rawImage0BufferId_).planes()[0];
+		metaData = plane.data();
+		uint32_t topLines = camHelper_->attributes()->mdParams.topLines;
+		unsigned int bpp = sensorInfo_.bitsPerPixel;
+		size_t bytepp = bpp <= 8 ? sizeof(uint8_t) : sizeof(uint16_t);
+		unsigned int width = sensorInfo_.outputSize.width;
+		metaSize = topLines * width * bytepp;
 	}
 
 	if (metaSize) {
