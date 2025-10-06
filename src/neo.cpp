@@ -921,7 +921,7 @@ void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 	uint64_t gainQ16 = static_cast<uint64_t>(aGainQ16) * dGainQ16 / UQ16_1;
 	double gain = static_cast<double>(gainQ16) / UQ16_1;
 
-	double exposure = settings->exp_n.exp.exposure * 1.0e-6;
+	Duration exposure = settings->exp_n.exp.exposure * 1.0us;
 	camHelper_->controlListSetAGC(&ctrls, exposure, gain);
 
 	if ((wbLocation_[channel_] == UGUZZI_CAM_INFO_WB_LOCATION_ISP) && (!frame)) {
@@ -1196,13 +1196,20 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 #endif
 	CameraMode cameraMode;
 	cameraMode.pixelRate = sensorInfo->pixelRate;
-	cameraMode.minLineLength = sensorInfo->minLineLength;
-	cameraMode.maxLineLength = sensorInfo->maxLineLength;
+	/*
+	 * Calculate the line length as the ratio between the line length in
+	 * pixels and the pixel rate. By default, the line length is configured
+	 * to its minimum value, so use that value.
+	 */
+	cameraMode.minLineLength = sensorInfo->minLineLength * (1.0s / sensorInfo->pixelRate);
+	cameraMode.maxLineLength = sensorInfo->maxLineLength * (1.0s / sensorInfo->pixelRate);
 	cameraMode.minFrameLength = sensorInfo->minFrameLength;
 	cameraMode.maxFrameLength = sensorInfo->maxFrameLength;
 	cameraMode.bitdepth = sensorInfo->bitsPerPixel;
 	cameraMode.width = sensorInfo->outputSize.width;
 	cameraMode.height = sensorInfo->outputSize.height;
+	cameraMode.hblank = ipaConfig.sensorControlList.get(V4L2_CID_HBLANK).get<int32_t>();
+	cameraMode.vblank = ipaConfig.sensorControlList.get(V4L2_CID_VBLANK).get<int32_t>();
 	auto iter = kSensorStreamModeMap.find(mode);
 	if (iter != kSensorStreamModeMap.end()) {
 		cameraMode.streamMode = iter->second;
