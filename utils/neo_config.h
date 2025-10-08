@@ -13,6 +13,8 @@
 
 #include <libcamera/geometry.h>
 
+#include <libcamera/ipa/nxpneo_ipa_interface.h>
+
 #include "libcamera/internal/yaml_parser.h"
 
 namespace libcamera::ipa::nxpneo {
@@ -20,6 +22,7 @@ namespace libcamera::ipa::nxpneo {
 struct TuningInfo {
 	Size resolution;
 	unsigned int bitDepth;
+	IPAModeType mode;
 	std::string dtpFile;
 	unsigned int tuningId;
 	unsigned int tuningMode;
@@ -37,7 +40,8 @@ public:
 	const TuningInfo *tuningInfo(const std::string &model,
 				     const std::string &entity,
 				     Size resolution,
-				     unsigned int bitDepth) const;
+				     unsigned int bitDepth,
+				     IPAModeType mode) const;
 	uint16_t socketPort(const std::string &model,
 			    const std::string &entity) const;
 	const std::optional<std::string> &sensorFilter() const { return sensorFilter_; }
@@ -45,6 +49,7 @@ public:
 private:
 	static constexpr uint16_t kSocketPort = 50000;
 	static constexpr unsigned int kBitDepth = 16;
+	static constexpr IPAModeType kMode = IPAModeTypeStandard;
 	static constexpr unsigned int kTuningId = 2010;
 	static constexpr unsigned int kTuningMode = 0;
 
@@ -56,6 +61,8 @@ private:
 	SensorMap sensorMap_;
 	std::optional<std::string> sensorFilter_;
 	SocketMap socketMap_;
+	/* Map between the sensor stream mode name and its associated IPA enum value. */
+	static const std::map<std::string, IPAModeType> kIPAModeNameMap;
 };
 
 } /* namespace libcamera::ipa::nxpneo */

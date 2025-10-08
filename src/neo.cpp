@@ -1139,13 +1139,15 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	/* Get the tuning info according to the sensor entity and resolution */
 	tuningInfo_ = config_.tuningInfo(sensorModel_, sensorEntity_,
 					 sensorInfo->outputSize,
-					 sensorInfo->bitsPerPixel);
+					 sensorInfo->bitsPerPixel,
+					 mode);
 	if (!tuningInfo_) {
 		LOG(NxpNeoUguzziIPA, Warning) << "No tuningInfo for ["
 					      << sensorModel_ << "; "
 					      << sensorEntity_ << "; "
 					      << sensorInfo->outputSize << "; "
-					      << sensorInfo->bitsPerPixel << "bpp]";
+					      << sensorInfo->bitsPerPixel << "bpp; mode:"
+					      << mode << "]";
 		return -EINVAL;
 	}
 
