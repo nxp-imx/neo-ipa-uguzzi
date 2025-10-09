@@ -219,23 +219,23 @@ static void convertHdrMerge(neoisp_hdr_merge_cfg_s *neoispHdrMerge,
 	neoispHdrMerge->ctrl_motion_fix_en =
 		(__u8)hdrMerge->ctrl.enable_motion_artifact_fixing;
 	neoispHdrMerge->ctrl_blend_3x3 = (__u8)hdrMerge->ctrl.blend_mode;
-	neoispHdrMerge->ctrl_gain1bpp = (__u8)hdrMerge->ctrl.leveled_dcg_bpp;
-	neoispHdrMerge->ctrl_gain0bpp = (__u8)hdrMerge->ctrl.leveled_vs_bpp;
+	neoispHdrMerge->ctrl_gain0bpp = (__u8)hdrMerge->ctrl.leveled_dcg_bpp;
+	neoispHdrMerge->ctrl_gain1bpp = (__u8)hdrMerge->ctrl.leveled_vs_bpp;
 	neoispHdrMerge->ctrl_obpp = (__u8)hdrMerge->ctrl.output_bpp;
-	neoispHdrMerge->gain_offset_offset1 = (__u16)hdrMerge->leveling_offset_dcg;
-	neoispHdrMerge->gain_offset_offset0 = (__u16)hdrMerge->leveling_offset_vs;
-	neoispHdrMerge->gain_scale_scale1 = (__u16)hdrMerge->leveling_scale_dcg;
-	neoispHdrMerge->gain_scale_scale0 = (__u16)hdrMerge->leveling_scale_vs;
-	neoispHdrMerge->gain_shift_shift1 = (__u8)hdrMerge->leveling_shift_dcg;
-	neoispHdrMerge->gain_shift_shift0 = (__u8)hdrMerge->leveling_shift_vs;
+	neoispHdrMerge->gain_offset_offset0 = (__u16)hdrMerge->leveling_offset_dcg;
+	neoispHdrMerge->gain_offset_offset1 = (__u16)hdrMerge->leveling_offset_vs;
+	neoispHdrMerge->gain_scale_scale0 = (__u16)hdrMerge->leveling_scale_dcg;
+	neoispHdrMerge->gain_scale_scale1 = (__u16)hdrMerge->leveling_scale_vs;
+	neoispHdrMerge->gain_shift_shift0 = (__u8)hdrMerge->leveling_shift_dcg;
+	neoispHdrMerge->gain_shift_shift1 = (__u8)hdrMerge->leveling_shift_vs;
 	neoispHdrMerge->luma_th_th0 = (__u16)hdrMerge->luma_threshold;
 	neoispHdrMerge->luma_scale_scale = (__u16)hdrMerge->luma_scale;
 	neoispHdrMerge->luma_scale_shift = (__u8)hdrMerge->luma_scale_shift;
 	neoispHdrMerge->luma_scale_thshift = (__u8)hdrMerge->luma_threshold_shift;
-	neoispHdrMerge->downscale_imgscale1 = (__u8)hdrMerge->downscale_dcg;
-	neoispHdrMerge->downscale_imgscale0 = (__u8)hdrMerge->downscale_vs;
-	neoispHdrMerge->upscale_imgscale1 = (__u8)hdrMerge->upscale_dcg;
-	neoispHdrMerge->upscale_imgscale0 = (__u8)hdrMerge->upscale_vs;
+	neoispHdrMerge->downscale_imgscale0 = (__u8)hdrMerge->downscale_dcg;
+	neoispHdrMerge->downscale_imgscale1 = (__u8)hdrMerge->downscale_vs;
+	neoispHdrMerge->upscale_imgscale0 = (__u8)hdrMerge->upscale_dcg;
+	neoispHdrMerge->upscale_imgscale1 = (__u8)hdrMerge->upscale_vs;
 	neoispHdrMerge->post_scale_scale = (__u8)hdrMerge->output_scale;
 }
 
