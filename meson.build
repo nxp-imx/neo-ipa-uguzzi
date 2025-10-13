@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: CC0-1.0
 project('neo-ipa-uguzzi', 'c', 'cpp',
         meson_version : '>= 0.63',
-        version : '0.2.4',
+        version : '0.2.5',
         default_options : [
             'werror=true',
             'warning_level=2',
