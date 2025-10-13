@@ -3,6 +3,44 @@
 Change Log
 ==========
 
+Release lf-6.12.49-2.2.0 (December 2025)
+====================================
+
+Associated versions
+-------------------
+
+* IPA release: lf-6.12.49-2.2.0
+* IPA version: UGUZZI_IPA_v0.2.5
+* libcamera release: lf-6.12.49-2.2.0
+* libcamera version: v0.5.2
+* uGuzzi version: 2025. 7.24[1]
+* Tuning Tool version: 0.95.07
+* libuguzzi.so sha256sum: 1d7f7721b74e52563bdebc088de63169f2a15771fd899bde7d2e640a20791318
+* libuguzzi_connect.so sha256sum: 8cf435a34b31647f661564c07563beabf1ec41c533b8d2698bbeb5aac590655d
+
+Added
+-------
+
+* Give access to Image1 buffer for live tuning
+* Add stream mode trigger for the selected tuning configuration
+* Use multi-capture controls in HDR mode for the os08a20 sensor
+* Add os08a20 DTP with HDR configuration for the 3840x2160 resolution and 12 bit depth
+* Add checksum verification on embedded data for the ox03c10 sensor
+* Rename the DTPs explicitly with supported sensor mode, resolution and bit depth
+
+Changed
+-------
+
+* Update IPA NEO mojom interface with 2025 Q4 release
+* Update with extended metadata interface which provides an abstraction access to the NEO ISP driver metadata.
+* Calculate the sensor line duration based on the sensor hblank
+* Calculate the sensor VTS based on the sensor height and vblank
+
+Fixed
+-------
+
+* Fix swapped HDR merge input0 and input1 setting
+
 Release lf-6.12.34-2.1.0 (September 2025)
 ====================================
 
