@@ -52,7 +52,6 @@ extern const ControlIdMap controlIdMap;
 
 } /* namespace md */
 
-
 /* Sensor stream modes */
 enum SensorStreamModes {
 	SensorStreamStandard = 0,

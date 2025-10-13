@@ -125,7 +125,6 @@ double CameraHelperOs08a20::gain(uint32_t gainCode) const
 	return gain;
 }
 
-
 void CameraHelperOs08a20::controlListSetAGC(
 	ControlList *ctrls, Duration exposure, double gain) const
 {

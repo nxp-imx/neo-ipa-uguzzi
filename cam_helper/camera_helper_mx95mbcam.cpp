@@ -231,37 +231,37 @@ private:
 	static constexpr float kMaxAnalogGainLong = 15.0f;
 	static constexpr float kMinAnalogGainShort = 1.0f;
 	static constexpr float kMaxAnalogGainShort = 15.0f;
-	static constexpr float kMinAnalogGainVs = 1.0f;
-	static constexpr float kMaxAnalogGainVs = 15.0f;
 	static constexpr float kMinAnalogGainSpd = 1.0f;
 	static constexpr float kMaxAnalogGainSpd = 15.0f;
+	static constexpr float kMinAnalogGainVs = 1.0f;
+	static constexpr float kMaxAnalogGainVs = 15.0f;
 
 	static constexpr float kMinDigitalGainLong = 1.0f;
-	static constexpr float kMaxDigitalGainLong = 15.0;
+	static constexpr float kMaxDigitalGainLong = 15.0f;
 	static constexpr float kMinDigitalGainShort = 1.0f;
-	static constexpr float kMaxDigitalGainShort = 15.0;
-	static constexpr float kMinDigitalGainVs = 1.0f;
-	static constexpr float kMaxDigitalGainVs = 15.0;
+	static constexpr float kMaxDigitalGainShort = 15.0f;
 	static constexpr float kMinDigitalGainSpd = 1.0f;
-	static constexpr float kMaxDigitalGainSpd = 15.0;
+	static constexpr float kMaxDigitalGainSpd = 15.0f;
+	static constexpr float kMinDigitalGainVs = 1.0f;
+	static constexpr float kMaxDigitalGainVs = 15.0f;
 
 	static constexpr uint32_t kMinAnalogGainLongQ16 = kMinAnalogGainLong * Q16_1;
 	static constexpr uint32_t kMaxAnalogGainLongQ16 = kMaxAnalogGainLong * Q16_1;
 	static constexpr uint32_t kMinAnalogGainShortQ16 = kMinAnalogGainShort * Q16_1;
 	static constexpr uint32_t kMaxAnalogGainShortQ16 = kMaxAnalogGainShort * Q16_1;
-	static constexpr uint32_t kMinAnalogGainVsQ16 = kMinAnalogGainVs * Q16_1;
-	static constexpr uint32_t kMaxAnalogGainVsQ16 = kMaxAnalogGainVs * Q16_1;
 	static constexpr uint32_t kMinAnalogGainSpdQ16 = kMinAnalogGainSpd * Q16_1;
 	static constexpr uint32_t kMaxAnalogGainSpdQ16 = kMaxAnalogGainSpd * Q16_1;
+	static constexpr uint32_t kMinAnalogGainVsQ16 = kMinAnalogGainVs * Q16_1;
+	static constexpr uint32_t kMaxAnalogGainVsQ16 = kMaxAnalogGainVs * Q16_1;
 
 	static constexpr uint32_t kMinDigitalGainLongQ16 = kMinDigitalGainLong * Q16_1;
 	static constexpr uint32_t kMaxDigitalGainLongQ16 = kMaxDigitalGainLong * Q16_1;
 	static constexpr uint32_t kMinDigitalGainShortQ16 = kMinDigitalGainShort * Q16_1;
 	static constexpr uint32_t kMaxDigitalGainShortQ16 = kMaxDigitalGainShort * Q16_1;
-	static constexpr uint32_t kMinDigitalGainVsQ16 = kMinDigitalGainVs * Q16_1;
-	static constexpr uint32_t kMaxDigitalGainVsQ16 = kMaxDigitalGainVs * Q16_1;
 	static constexpr uint32_t kMinDigitalGainSpdQ16 = kMinDigitalGainSpd * Q16_1;
 	static constexpr uint32_t kMaxDigitalGainSpdQ16 = kMaxDigitalGainSpd * Q16_1;
+	static constexpr uint32_t kMinDigitalGainVsQ16 = kMinDigitalGainVs * Q16_1;
+	static constexpr uint32_t kMaxDigitalGainVsQ16 = kMaxDigitalGainVs * Q16_1;
 
 	/* full fraction range */
 	static constexpr uint32_t kAnalogGainMaskRange1 = 0xFF000U;
@@ -650,13 +650,13 @@ void CameraHelperMx95mbcam::controlListSetAGC(
 
 	lDgainL = kMinDigitalGainLongQ16;
 	lDgainS = kMinDigitalGainShortQ16;
-	lDgainVS = kMinDigitalGainVsQ16;
 	lDgainSPD = kMinDigitalGainVsQ16;
+	lDgainVS = kMinDigitalGainVsQ16;
 
 	lAgainL = (lAgainL * Q16_1) / (((uint64_t)lDgainL * sensorConversionRatio) / Q16_1);
 	lAgainS = (lAgainS * Q16_1) / lDgainS;
-	lAgainVS = (lAgainVS * Q16_1) / lDgainVS;
 	lAgainSPD = (lAgainSPD * Q16_1) / lDgainSPD;
+	lAgainVS = (lAgainVS * Q16_1) / lDgainVS;
 
 	ox03c10_analog_gain v4l2AnalogGains;
 	uint32_t lX3cMinGain = kMinAnalogGainLongQ16;
@@ -812,12 +812,10 @@ int CameraHelperMx95mbcam::parseEmbedded(Span<const uint8_t> buffer,
 	uint32_t spdAnalogGainCode =
 		((registers[AecSpdCtrl14Reg] & 0x1fU) << 7U) |
 		(registers[AecSpdCtrl15Reg] & 0x7fU);
-
 	/* SPD analog gain is provided as the last (shortest) capture. */
 	std::array<uint32_t, 3> aGainCodes = { hcgAnalogGainCode,
 					       lcgAnalogGainCode,
 					       spdAnalogGainCode };
-
 	std::array<float, 3> aGainsArray;
 	analogGains(Span<uint32_t>(aGainCodes), Span<float>(aGainsArray));
 
@@ -862,6 +860,7 @@ int CameraHelperMx95mbcam::parseEmbedded(Span<const uint8_t> buffer,
 	float dcgExposureS = exposure(2 * dcgExposure, lineDuration_) / 1.0s;
 	/* SPD exposure time is provided as the last (shortest) capture. */
 	float spdExposureS = exposure(2 * spdExposure, lineDuration_) / 1.0s;
+
 	std::array<float, 3> exposuresArray = { dcgExposureS,
 						dcgExposureS,
 						spdExposureS };
