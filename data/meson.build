@@ -2,7 +2,7 @@
 
 conf_files = files([
     'database_mx95mbcam_1920-1280_16bpp.bin',
-    'database_os08a20.bin',
+    'database_os08a20_SDR_3840-2160_12bpp.bin',
     'config_ipa_uguzzi.yaml',
 ])
 

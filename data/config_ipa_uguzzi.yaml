@@ -61,7 +61,7 @@ sensors:
       - resolution: [3840, 2160]
         bit-depth: 12
         mode: standard
-        dtp-file: database_os08a20.bin
+        dtp-file: database_os08a20_SDR_3840-2160_12bpp.bin
         tuning-id: 2010
         tuning-mode: 0
   - entity: os08a20 1-0036
