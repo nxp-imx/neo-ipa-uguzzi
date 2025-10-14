@@ -96,8 +96,6 @@ public:
 
 	int configure(const IPAConfigInfo &ipaConfig,
 		      const std::map<uint32_t, IPAStream> &streamConfig,
-		      const IPAModeType mode,
-		      const IPAColorSpace &colorSpace,
 		      ControlInfoMap *ipaControls) override;
 	void mapBuffers(const std::vector<IPABuffer> &buffers) override;
 	void unmapBuffers(const std::vector<unsigned int> &ids) override;
@@ -1112,8 +1110,6 @@ void IPANxpNeo::stop()
 
 int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 			 const std::map<uint32_t, IPAStream> &streamConfig,
-			 const IPAModeType mode,
-			 [[maybe_unused]] const IPAColorSpace &colorSpace,
 			 ControlInfoMap *ipaControls)
 {
 	int ret = 0;
@@ -1140,14 +1136,14 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	tuningInfo_ = config_.tuningInfo(sensorModel_, sensorEntity_,
 					 sensorInfo->outputSize,
 					 sensorInfo->bitsPerPixel,
-					 mode);
+					 ipaConfig.mode);
 	if (!tuningInfo_) {
 		LOG(NxpNeoUguzziIPA, Warning) << "No tuningInfo for ["
 					      << sensorModel_ << "; "
 					      << sensorEntity_ << "; "
 					      << sensorInfo->outputSize << "; "
 					      << sensorInfo->bitsPerPixel << "bpp; mode:"
-					      << mode << "]";
+					      << ipaConfig.mode << "]";
 		return -EINVAL;
 	}
 
@@ -1219,14 +1215,14 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	cameraMode.height = sensorInfo->outputSize.height;
 	cameraMode.hblank = ipaConfig.sensorControlList.get(V4L2_CID_HBLANK).get<int32_t>();
 	cameraMode.vblank = ipaConfig.sensorControlList.get(V4L2_CID_VBLANK).get<int32_t>();
-	auto iter = kSensorStreamModeMap.find(mode);
+	auto iter = kSensorStreamModeMap.find(ipaConfig.mode);
 	if (iter != kSensorStreamModeMap.end()) {
 		cameraMode.streamMode = iter->second;
 	} else {
 		cameraMode.streamMode = SensorStreamStandard;
 		LOG(NxpNeoUguzziIPA, Warning)
 			<< "No sensor stream mode found for pipeline mode: "
-			<< mode
+			<< ipaConfig.mode
 			<< " - Default mode is used: " << cameraMode.streamMode;
 	}
 	camHelper_->setCameraMode(cameraMode);
