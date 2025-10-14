@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: CC0-1.0
 
 conf_files = files([
-    'database_mx95mbcam.bin',
+    'database_mx95mbcam_1920-1280_16bpp.bin',
     'database_os08a20.bin',
     'config_ipa_uguzzi.yaml',
 ])
