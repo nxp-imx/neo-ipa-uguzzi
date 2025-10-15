@@ -40,7 +40,7 @@ struct ImageBufferViewSetPkg {
 };
 
 struct IspStatisticsPkg {
-	const neoisp_meta_stats_s *channel[UGUZZI_CAMERA_CNT];
+	const NxpNeoStats *channel[UGUZZI_CAMERA_CNT];
 };
 
 class LiveControl

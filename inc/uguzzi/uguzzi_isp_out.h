@@ -251,10 +251,25 @@ typedef struct {
     const uint32_t *local_stats;
 } imx9x_isp_aglbce_stats_hw_t;
 
+typedef struct {
+    imx9x_isp_autofocus_output_t af_rois_stat;
+    /* The ROIs used to generate the above stats */
+    imx9x_isp_autofocus_roi_cfg_t rois_config[AUTOFOCUS_ROI_CNT];
+
+    /* Pointer to DRC block stats */
+    const uint32_t *block_stats;
+    /* The DRC grid configuration for the above stats */
+    uint16_t block_width;
+    uint16_t block_height;
+    uint16_t block_cnt_horz;
+    uint16_t block_cnt_vert;
+} imx9x_isp_af_stats_t;
+
 typedef imx9x_isp_bayer_t uguzzi_bayer_pattern_t;
 typedef imx9x_isp_aglbce_stats_hw_t ae_statistics_data_hw_t;
 typedef hat_hist_stat_t ae_histogram_data_hw_t;
 typedef imx9x_isp_awb_statistics_t awb_statistics_data_hw_t;
+typedef imx9x_isp_af_stats_t af_statistics_data_hw_t;
 
 #ifdef __cplusplus
 }

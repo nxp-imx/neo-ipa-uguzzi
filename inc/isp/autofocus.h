@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2023-2024 NXP
+ * Copyright 2023-2025 NXP
  *
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
@@ -11,6 +11,13 @@
 
 #define AUTOFOCUS_ROI_CNT 9u
 #define AUTOFOCUS_FIL_COEFFS_CNT 9u
+
+typedef struct {
+    /* The sum from filter0 of each ROI */
+    uint32_t filter0_sums[AUTOFOCUS_ROI_CNT];
+    /* The sum from filter1 of each ROI */
+    uint32_t filter1_sums[AUTOFOCUS_ROI_CNT];
+} imx9x_isp_autofocus_output_t;
 
 typedef struct {
     uint16_t x; /* min: 0, max: 65535 */

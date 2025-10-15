@@ -4,4 +4,6 @@ neo_ipa_uguzzi_files += files([
     'isp_settings_converter.cpp',
     'neo_config.cpp',
     'uguzzi_log.cpp',
+    'params.cpp',
+    'stats.cpp',
 ])

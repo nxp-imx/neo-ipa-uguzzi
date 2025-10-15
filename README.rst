@@ -33,7 +33,7 @@ From the cross-build environment, run following script at the root of the libcam
   SDK=<YOUR_SDK_PATH>
     
   # setup build libcamera
-  meson setup  --buildtype=plain -Dprefix=/usr build -Dpipelines="nxp/neo" -Dv4l2=true -Dcam=enabled -Dlc-compliance=disabled -Dtest=false -Ddocumentation=disabled -Dqcam=disabled
+  meson setup  --buildtype=plain -Dprefix=/usr build -Dpipelines="nxp/neo" -Dv4l2=enabled -Dcam=enabled -Dlc-compliance=disabled -Dtest=false -Ddocumentation=disabled -Dqcam=disabled
   
   # build and install libcamera dependencies in SDK sysroots
   DESTDIR=${SDK}/sysroots/armv8a-poky-linux ninja -C build install

@@ -13,6 +13,13 @@ namespace libcamera::ipa::nxpneo {
 
 LOG_DEFINE_CATEGORY(NxpNeoUguzziConfig)
 
+const std::map<std::string, IPAModeType> IPAFileConfig::kIPAModeNameMap = {
+	{ "standard", IPAModeTypeStandard },
+	{ "hdr", IPAModeTypeHdrMerge },
+	{ "rgbIr", IPAModeTypeRgbIr },
+	{ "rgbIrDual", IPAModeTypeRgbIrDual },
+};
+
 /**
  * \brief Load the IPA configuration from a configuration file
  * \param[in] filename The path to configuration file
@@ -144,6 +151,11 @@ int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
 		tuningInfo.bitDepth =
 			bppObj.get<uint16_t>().value_or(kBitDepth);
 
+		const YamlObject &modeObj = profile["mode"];
+		const std::string modeName = modeObj.get<std::string>().value_or("");
+		auto iter = kIPAModeNameMap.find(modeName);
+		tuningInfo.mode = (iter != kIPAModeNameMap.end()) ? iter->second : kMode;
+
 		const YamlObject &dtpObj = profile["dtp-file"];
 		tuningInfo.dtpFile = dtpObj.get<std::string>().value_or("");
 
@@ -180,13 +192,14 @@ int IPAFileConfig::parseEntityFilter(const YamlObject &entity)
 
 /**
  * \brief Report the tuning info associated to a camera entity or model,
- *        to a resolution and to a bit depth.
+ *        to a resolution, to a bit depth and to the sensor stream mode.
  *        If no tuning info is found for entity, the tuning info is
  *        searched based on model.
  * \param[in] model The name of the camera media device model
  * \param[in] entity The name of the camera media device entity
  * \param[in] resolution The resolution of the camera stream
  * \param[in] bitDepth The bits per pixel of the camera stream
+ * \param[in] mode The sensor stream mode
  *
  * The tuningInfo structure contains information related to the tuning
  * of the sensor.
@@ -196,7 +209,8 @@ int IPAFileConfig::parseEntityFilter(const YamlObject &entity)
 const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 					    const std::string &entity,
 					    Size resolution,
-					    unsigned int bitDepth) const
+					    unsigned int bitDepth,
+					    IPAModeType mode) const
 {
 	/*
 	 * For the tuning info search, give priority to entity-based match over
@@ -216,7 +230,8 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 				tuningInfos->begin(), tuningInfos->end(),
 				[&](auto &info) {
 					return ((info.resolution == resolution) &&
-						(info.bitDepth == bitDepth));
+						(info.bitDepth == bitDepth) &&
+						(info.mode == mode));
 				});
 			if (iter_res != tuningInfos->end()) {
 				const TuningInfo *tuningInfo = &(*iter_res);
@@ -224,7 +239,8 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 					<< "TuningInfo parsed for ["
 					<< entity << "; "
 					<< resolution << "; "
-					<< bitDepth << "bpp]: ["
+					<< bitDepth << "bpp; mode:"
+					<< mode << "]: ["
 					<< tuningInfo->dtpFile << ", "
 					<< tuningInfo->tuningId << ", "
 					<< tuningInfo->tuningMode << "]";
@@ -234,7 +250,8 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 	}
 	LOG(NxpNeoUguzziConfig, Error) << "No tuning Info found for ["
 				       << entity << "; "
-				       << resolution << "; " << bitDepth << "bpp]";
+				       << resolution << "; " << bitDepth << "bpp; mode:"
+				       << mode << "]";
 	return nullptr;
 }
 
