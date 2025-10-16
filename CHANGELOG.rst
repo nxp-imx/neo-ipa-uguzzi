@@ -10,7 +10,7 @@ Associated versions
 -------------------
 
 * IPA release: android-16.0.0_1.2.0
-* IPA version: UGUZZI_IPA_v0.2.4
+* IPA version: UGUZZI_IPA_v0.2.5
 * libcamera release: android-16.0.0_1.2.0
 * libcamera version: v0.5.2
 * uGuzzi version: 2025. 7.24[3]
