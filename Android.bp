@@ -111,7 +111,7 @@ genrule {
     out: ["version.h"],
     cmd: "SBROOT=$$(realpath .) && " +
         "cd $$(dirname $$(dirname $$(dirname $(location scripts/libcamera/gen-version.sh)))) && " +
-        "GITVERSION=$$(./scripts/libcamera/gen-version.sh . . 0.2.4 | awk '{print $$1}') && " +
+        "GITVERSION=$$(./scripts/libcamera/gen-version.sh . . 0.2.5 | awk '{print $$1}') && " +
         "cd $$SBROOT && " +
         "sed \"s~@VCS_TAG@~$$GITVERSION~g\" $(in) > $(out)",
 }
@@ -121,8 +121,9 @@ prebuilt_etc {
     name: "neo_ipa_uguzzi_dtp",
     sub_dir: "configs/libcamera/nxp/neo/uguzzi",
     srcs: [
-        "data/database_os08a20.bin",
-        "data/database_mx95mbcam.bin",
+        "data/database_mx95mbcam_1920-1280_16bpp.bin",
+        "data/database_os08a20_HDR_3840-2160_12bpp.bin",
+        "data/database_os08a20_SDR_3840-2160_12bpp.bin",
         "data/config_ipa_uguzzi.yaml",
     ],
     vendor: true,
