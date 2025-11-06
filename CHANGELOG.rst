@@ -35,6 +35,9 @@ Changed
 * Update with extended metadata interface which provides an abstraction access to the NEO ISP driver metadata.
 * Calculate the sensor line duration based on the sensor hblank
 * Calculate the sensor VTS based on the sensor height and vblank
+* Define the socket port for the sensor model instead of the sensor entity
+   * The socket port is the same for any sensor entity from the same model
+   * This change applies in the IPA configuration file
 
 Fixed
 -------
