@@ -218,6 +218,10 @@ private:
 	std::unique_ptr<CameraHelper> camHelper_;
 
 	ControlInfoMap sensorControls_;
+	ControlInfoMap lensControls_;
+
+	bool lensPresent_ = false;
+	std::optional<int32_t> lensHwPosition_;
 
 	ControlList mdControls_;
 
@@ -962,6 +966,17 @@ void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 
 	LOG(NxpNeoUguzziIPA, Debug) << logSensorParams(frame, &mdControls_, &ctrls);
 	setSensorControls.emit(frame, context, ctrls);
+
+	if (!lensPresent_)
+		return;
+
+	if (!lensHwPosition_ || lensHwPosition_.value() != settings->lens_pos) {
+		lensHwPosition_ = settings->lens_pos;
+		ControlList lensControls(lensControls_);
+		ControlValue value(lensHwPosition_.value());
+		lensControls.set(V4L2_CID_FOCUS_ABSOLUTE, value);
+		setLensControls.emit(lensControls);
+	}
 }
 
 bool IPANxpNeo::libcameraCfa2UguzziBayerPattern(
@@ -1084,6 +1099,8 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 
 	/* Set the camera helper with sensor control values. */
 	camHelper_->setControls(&params.sensorControlList);
+
+	lensPresent_ = params.lensPresent;
 
 	/* Set the IPA initialization state flag to enabled */
 	enabled_ = true;
@@ -1228,6 +1245,7 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	camHelper_->setCameraMode(cameraMode);
 
 	sensorControls_ = ipaConfig.sensorControls;
+	lensControls_ = ipaConfig.lensControls;
 	sensorInfo_ = ipaConfig.sensorInfo;
 
 	return 0;
