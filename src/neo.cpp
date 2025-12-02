@@ -495,7 +495,7 @@ int IPANxpNeo::setUguzziInitialConfig()
 
 	/* Disable the uGuzzi AF processing (0: normal, 1: disabled) */
 	cfg.config_id = CMD_AF_PROCESSING_MODE;
-	cfg.config_val = 1;
+	cfg.config_val = lensPresent_ ? 0 : 1;
 	err |= uguzzi_config(&cfg);
 
 	/*
