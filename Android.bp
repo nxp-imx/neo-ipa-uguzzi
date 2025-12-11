@@ -111,7 +111,7 @@ genrule {
     out: ["version.h"],
     cmd: "SBROOT=$$(realpath .) && " +
         "cd $$(dirname $$(dirname $$(dirname $(location scripts/libcamera/gen-version.sh)))) && " +
-        "GITVERSION=$$(./scripts/libcamera/gen-version.sh . . 0.2.5 | awk '{print $$1}') && " +
+        "GITVERSION=$$(./scripts/libcamera/gen-version.sh . . 0.2.6 | awk '{print $$1}') && " +
         "cd $$SBROOT && " +
         "sed \"s~@VCS_TAG@~$$GITVERSION~g\" $(in) > $(out)",
 }
