@@ -134,6 +134,10 @@ private:
 				   const neoisp_ctemp_reg_stats_s *ctempRegs,
 				   const neoisp_ctemp_mem_stats_s *ctempMems,
 				   awb_statistics_data_hw_t *outAwbData);
+	void prepareUguzziAfStats(const vpipe_settings_hw_t *cfg,
+				  const neoisp_af_reg_stats_s *afRegs,
+				  const neoisp_drc_mem_stats_s *drcMems,
+				  af_statistics_data_hw_t *outAfData);
 	void prepareUguzziStats(const NxpNeoStats *stats);
 
 	int processUguzzi(uguzzi_sensor_data_pkg_t *sensorDataPkg,
@@ -205,6 +209,7 @@ private:
 	ae_statistics_data_hw_t mAgblbceStats[UGUZZI_CAMERA_CNT];
 	awb_statistics_data_hw_t mAwbStatsData[UGUZZI_CAMERA_CNT];
 	imx9x_isp_awb_stats_type_t mAwbStatType[UGUZZI_CAMERA_CNT];
+	af_statistics_data_hw_t mAfStatsData[UGUZZI_CAMERA_CNT];
 
 	/* uguzzi_process outputs */
 	uguzzi_sensor_settings_pkg_t mSensorSettingsPkg;
@@ -218,8 +223,14 @@ private:
 	std::unique_ptr<CameraHelper> camHelper_;
 
 	ControlInfoMap sensorControls_;
+	ControlInfoMap lensControls_;
+
+	bool lensPresent_ = false;
+	std::optional<int32_t> lensHwPosition_;
 
 	ControlList mdControls_;
+
+	IPAModeType pipelineMode_;
 
 	/*
 	 * this array maintains the frame id for each camera
@@ -236,6 +247,7 @@ private:
 
 	/* Map between the IPA stream mode and the cameraHelper stream mode. */
 	static const std::map<const IPAModeType, SensorStreamModes> kSensorStreamModeMap;
+	static const std::map<const IPAContextType, SensorContextTypes> kSensorContextMap;
 };
 
 const std::map<const IPAModeType, SensorStreamModes> IPANxpNeo::kSensorStreamModeMap = {
@@ -243,6 +255,11 @@ const std::map<const IPAModeType, SensorStreamModes> IPANxpNeo::kSensorStreamMod
 	{ IPAModeTypeHdrMerge, SensorStreamHdr },
 	{ IPAModeTypeRgbIr, SensorStreamRgbIr },
 	{ IPAModeTypeRgbIrDual, SensorStreamDualContext },
+};
+
+const std::map<const IPAContextType, SensorContextTypes> IPANxpNeo::kSensorContextMap = {
+	{ IPAContextTypeRgb, SensorContextRgb },
+	{ IPAContextTypeIr, SensorContextIr },
 };
 
 namespace {
@@ -318,6 +335,7 @@ int IPANxpNeo::initializeUguzzi(Size outputSize)
 	mStatsDataPkg.channel[channel_].p_ae_hist = &mAeHistData[channel_];
 	mStatsDataPkg.channel[channel_].p_awb_stats = &mAwbStatsData[channel_];
 	mStatsDataPkg.channel[channel_].p_awb_sw_stats = nullptr;
+	mStatsDataPkg.channel[channel_].p_af_stats = &mAfStatsData[channel_];
 	mSensorSettingsPkg.channel[channel_] = &mSensorSettings[channel_];
 	mIspSettingsPkg.isp_config[channel_] = &mIspSettings[channel_];
 
@@ -485,7 +503,7 @@ int IPANxpNeo::setUguzziInitialConfig()
 
 	/* Disable the uGuzzi AF processing (0: normal, 1: disabled) */
 	cfg.config_id = CMD_AF_PROCESSING_MODE;
-	cfg.config_val = 1;
+	cfg.config_val = lensPresent_ ? 0 : 1;
 	err |= uguzzi_config(&cfg);
 
 	/*
@@ -833,6 +851,35 @@ void IPANxpNeo::prepareUguzziAwbStats(imx9x_isp_awb_stats_type_t statType,
 	}
 }
 
+void IPANxpNeo::prepareUguzziAfStats(const vpipe_settings_hw_t *cfg,
+				     const neoisp_af_reg_stats_s *afRegs,
+				     const neoisp_drc_mem_stats_s *drcMems,
+				     af_statistics_data_hw_t *outAfData)
+{
+	/* Populate CDAF statistics. */
+	uint32_t *filter0Sums = &outAfData->af_rois_stat.filter0_sums[0];
+	uint32_t *filter1Sums = &outAfData->af_rois_stat.filter1_sums[0];
+	for (unsigned int i = 0; i < AUTOFOCUS_ROI_CNT; i++) {
+		filter0Sums[i] = afRegs->rois[i].sum0;
+		filter1Sums[i] = afRegs->rois[i].sum1;
+	}
+
+	/* Report AF ROI definitions. */
+	const imx9x_isp_autofocus_roi_cfg_t *roisConfig =
+		&cfg->isp_cfg_params[0].autofocus.rois_config[0];
+	imx9x_isp_autofocus_roi_cfg_t *roisOut = &outAfData->rois_config[0];
+	std::copy(roisConfig, roisConfig + AUTOFOCUS_ROI_CNT, roisOut);
+
+	/* Populate DRC local 32x32 grid configuration and statistics. */
+	outAfData->block_stats = drcMems->drc_local_sum;
+	const imx9x_isp_drc_local_tonemap_ctrl_cfg_t *localDrcConfig =
+		 &cfg->isp_cfg_params[0].drc_local_tonemap_ctrl;
+	outAfData->block_width = localDrcConfig->block_size_x;
+	outAfData->block_height = localDrcConfig->block_size_y;
+	outAfData->block_cnt_horz = 32;
+	outAfData->block_cnt_vert = 32;
+}
+
 void IPANxpNeo::prepareUguzziStats(const NxpNeoStats *stats)
 {
 	auto rgbirStats = stats->block<BlockStatsType::MRgbIr>();
@@ -853,6 +900,12 @@ void IPANxpNeo::prepareUguzziStats(const NxpNeoStats *stats)
 	mAgblbceStats[channel_].global_hist_roi0 = drcMemStats->drc_global_hist_roi0;
 	mAgblbceStats[channel_].global_hist_roi1 = drcMemStats->drc_global_hist_roi1;
 	mAgblbceStats[channel_].local_stats = drcMemStats->drc_local_sum;
+
+	auto afStats = stats->block<BlockStatsType::RAf>();
+	prepareUguzziAfStats(&mIspSettings[channel_],
+			     afStats.stats(),
+			     drcMemStats.stats(),
+			     &mAfStatsData[channel_]);
 
 	mStatsDataPkg.channel[channel_].stats_type = HW_STATS;
 	mStatsDataPkg.channel[channel_].valid = 1;
@@ -936,7 +989,8 @@ void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 	double gain = static_cast<double>(gainQ16) / UQ16_1;
 
 	Duration exposure = settings->exp_n.exp.exposure * 1.0us;
-	camHelper_->controlListSetAGC(&ctrls, exposure, gain);
+	camHelper_->controlListSetAGC(&ctrls, kSensorContextMap.at(context),
+				      exposure, gain);
 
 	if ((wbLocation_[channel_] == UGUZZI_CAM_INFO_WB_LOCATION_ISP) && (!frame)) {
 		/* WB in ISP, set sensor WB gains to 1.0 only for 1st frame */
@@ -961,7 +1015,28 @@ void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 	}
 
 	LOG(NxpNeoUguzziIPA, Debug) << logSensorParams(frame, &mdControls_, &ctrls);
-	setSensorControls.emit(frame, context, ctrls);
+
+	/*
+	 * In RGBIr dual mode, the controls should be sent for one context only:
+	 * - the RGB context should be used as long as the single-capture
+	 *   controls are used from the CameraHelper in RGBIr dual mode.
+	 */
+	if (pipelineMode_ != IPAModeTypeRgbIrDual ||
+	    (pipelineMode_ == IPAModeTypeRgbIrDual &&
+	     context == IPAContextTypeRgb)) {
+		setSensorControls.emit(frame, ctrls);
+	}
+
+	if (!lensPresent_)
+		return;
+
+	if (!lensHwPosition_ || lensHwPosition_.value() != settings->lens_pos) {
+		lensHwPosition_ = settings->lens_pos;
+		ControlList lensControls(lensControls_);
+		ControlValue value(lensHwPosition_.value());
+		lensControls.set(V4L2_CID_FOCUS_ABSOLUTE, value);
+		setLensControls.emit(lensControls);
+	}
 }
 
 bool IPANxpNeo::libcameraCfa2UguzziBayerPattern(
@@ -1085,6 +1160,8 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 	/* Set the camera helper with sensor control values. */
 	camHelper_->setControls(&params.sensorControlList);
 
+	lensPresent_ = params.lensPresent;
+
 	/* Set the IPA initialization state flag to enabled */
 	enabled_ = true;
 
@@ -1131,6 +1208,8 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 			<< "Failed to deinitialize Live Control!";
 #endif
 	deinitUguzzi();
+
+	pipelineMode_ = ipaConfig.mode;
 
 	/* Get the tuning info according to the sensor entity and resolution */
 	tuningInfo_ = config_.tuningInfo(sensorModel_, sensorEntity_,
@@ -1228,6 +1307,7 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	camHelper_->setCameraMode(cameraMode);
 
 	sensorControls_ = ipaConfig.sensorControls;
+	lensControls_ = ipaConfig.lensControls;
 	sensorInfo_ = ipaConfig.sensorInfo;
 
 	return 0;
@@ -1363,20 +1443,17 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 		LOG(NxpNeoUguzziIPA, Error) << "Failed to process ISP statistics";
 
 	ControlList metadata(controls::controls);
-	metadata.set(controls::Lux,
-		     static_cast<float>(mIspSettingsPkg.uguzzi_metadata[channel_].aec_info[22]));
-	metadata.set(controls::ColourTemperature,
-		     mSensorSettingsPkg.channel[channel_]->wb.colour_temp);
-	/* add more as needed */
-
-	/*
-	 * \todo Create IR-specific controls and have relevant algorithms to
-	 *       use them during RGBIr context processing. For now just clear
-	 *       the RGBIr context metadata to avoid merge conflict of the 2
-	 *       contexts metadata being populated with the same controls.
-	 */
-	if (context == IPAContextTypeIr)
-		metadata.clear();
+	if (context == IPAContextTypeRgb) {
+		/*
+		 * Metadata are only filled in RGB context.
+		 * This is to avoid overwritten the same control in Ir context.
+		 */
+		metadata.set(controls::Lux,
+			     static_cast<float>(mIspSettingsPkg.uguzzi_metadata[channel_].aec_info[22]));
+		metadata.set(controls::ColourTemperature,
+			     mSensorSettingsPkg.channel[channel_]->wb.colour_temp);
+		/* add more as needed */
+	}
 
 	setControls(frame, context);
 
