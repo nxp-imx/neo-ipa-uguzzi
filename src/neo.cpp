@@ -230,6 +230,8 @@ private:
 
 	ControlList mdControls_;
 
+	IPAModeType pipelineMode_;
+
 	/*
 	 * this array maintains the frame id for each camera
 	 * and can be shared for testing purposes.
@@ -245,6 +247,7 @@ private:
 
 	/* Map between the IPA stream mode and the cameraHelper stream mode. */
 	static const std::map<const IPAModeType, SensorStreamModes> kSensorStreamModeMap;
+	static const std::map<const IPAContextType, SensorContextTypes> kSensorContextMap;
 };
 
 const std::map<const IPAModeType, SensorStreamModes> IPANxpNeo::kSensorStreamModeMap = {
@@ -252,6 +255,11 @@ const std::map<const IPAModeType, SensorStreamModes> IPANxpNeo::kSensorStreamMod
 	{ IPAModeTypeHdrMerge, SensorStreamHdr },
 	{ IPAModeTypeRgbIr, SensorStreamRgbIr },
 	{ IPAModeTypeRgbIrDual, SensorStreamDualContext },
+};
+
+const std::map<const IPAContextType, SensorContextTypes> IPANxpNeo::kSensorContextMap = {
+	{ IPAContextTypeRgb, SensorContextRgb },
+	{ IPAContextTypeIr, SensorContextIr },
 };
 
 namespace {
@@ -967,7 +975,7 @@ void IPANxpNeo::processLiveControl(const NxpNeoStats *stats)
 }
 #endif
 
-void IPANxpNeo::setControls(unsigned int frame, [[maybe_unused]] IPAContextType context)
+void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 {
 	ControlList ctrls(sensorControls_);
 
@@ -981,7 +989,8 @@ void IPANxpNeo::setControls(unsigned int frame, [[maybe_unused]] IPAContextType 
 	double gain = static_cast<double>(gainQ16) / UQ16_1;
 
 	Duration exposure = settings->exp_n.exp.exposure * 1.0us;
-	camHelper_->controlListSetAGC(&ctrls, exposure, gain);
+	camHelper_->controlListSetAGC(&ctrls, kSensorContextMap.at(context),
+				      exposure, gain);
 
 	if ((wbLocation_[channel_] == UGUZZI_CAM_INFO_WB_LOCATION_ISP) && (!frame)) {
 		/* WB in ISP, set sensor WB gains to 1.0 only for 1st frame */
@@ -1006,7 +1015,18 @@ void IPANxpNeo::setControls(unsigned int frame, [[maybe_unused]] IPAContextType 
 	}
 
 	LOG(NxpNeoUguzziIPA, Debug) << logSensorParams(frame, &mdControls_, &ctrls);
-	setSensorControls.emit(frame, ctrls);
+
+	/*
+	 * In RGBIr dual mode, the controls should be sent:
+	 * - for context Ir only
+	 * After processing the Ir context, the multi controls are updated
+	 * with both context of the frame.
+	 */
+	if (pipelineMode_ != IPAModeTypeRgbIrDual ||
+	    (pipelineMode_ == IPAModeTypeRgbIrDual &&
+	     context == IPAContextTypeIr)) {
+		setSensorControls.emit(frame, ctrls);
+	}
 
 	if (!lensPresent_)
 		return;
@@ -1189,6 +1209,8 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 			<< "Failed to deinitialize Live Control!";
 #endif
 	deinitUguzzi();
+
+	pipelineMode_ = ipaConfig.mode;
 
 	/* Get the tuning info according to the sensor entity and resolution */
 	tuningInfo_ = config_.tuningInfo(sensorModel_, sensorEntity_,
