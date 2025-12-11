@@ -1444,20 +1444,17 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 		LOG(NxpNeoUguzziIPA, Error) << "Failed to process ISP statistics";
 
 	ControlList metadata(controls::controls);
-	metadata.set(controls::Lux,
-		     static_cast<float>(mIspSettingsPkg.uguzzi_metadata[channel_].aec_info[22]));
-	metadata.set(controls::ColourTemperature,
-		     mSensorSettingsPkg.channel[channel_]->wb.colour_temp);
-	/* add more as needed */
-
-	/*
-	 * \todo Create IR-specific controls and have relevant algorithms to
-	 *       use them during RGBIr context processing. For now just clear
-	 *       the RGBIr context metadata to avoid merge conflict of the 2
-	 *       contexts metadata being populated with the same controls.
-	 */
-	if (context == IPAContextTypeIr)
-		metadata.clear();
+	if (context == IPAContextTypeRgb) {
+		/*
+		 * Metadata are only filled in RGB context.
+		 * This is to avoid overwritten the same control in Ir context.
+		 */
+		metadata.set(controls::Lux,
+			     static_cast<float>(mIspSettingsPkg.uguzzi_metadata[channel_].aec_info[22]));
+		metadata.set(controls::ColourTemperature,
+			     mSensorSettingsPkg.channel[channel_]->wb.colour_temp);
+		/* add more as needed */
+	}
 
 	setControls(frame, context);
 
