@@ -967,7 +967,7 @@ void IPANxpNeo::processLiveControl(const NxpNeoStats *stats)
 }
 #endif
 
-void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
+void IPANxpNeo::setControls(unsigned int frame, [[maybe_unused]] IPAContextType context)
 {
 	ControlList ctrls(sensorControls_);
 
@@ -1006,7 +1006,7 @@ void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 	}
 
 	LOG(NxpNeoUguzziIPA, Debug) << logSensorParams(frame, &mdControls_, &ctrls);
-	setSensorControls.emit(frame, context, ctrls);
+	setSensorControls.emit(frame, ctrls);
 
 	if (!lensPresent_)
 		return;
