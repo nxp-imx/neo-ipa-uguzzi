@@ -3,6 +3,50 @@
 Change Log
 ==========
 
+Release lf-6.18.y-1.0.0 (March 2026)
+====================================
+
+Associated versions
+-------------------
+
+* IPA release: lf-6.18.y-1.0.0
+* IPA version: UGUZZI_IPA_v0.2.6
+* libcamera release: lf-6.18.y-1.0.0
+* libcamera version: v0.6.0
+* uGuzzi version: 2025. 7.24[1]
+* Tuning Tool version: 0.95.07
+* libuguzzi.so sha256sum: 1d7f7721b74e52563bdebc088de63169f2a15771fd899bde7d2e640a20791318
+* libuguzzi_connect.so sha256sum: 8cf435a34b31647f661564c07563beabf1ec41c533b8d2698bbeb5aac590655d
+
+Added
+-------
+
+* Add camera helper support for ox05b1s sensor
+* Add camera helper support for ar0235 sensor
+* Add camera helper support for sensors commonly used by community:
+   * Sony imx219 (RPi camera module 2)
+   * Sony imx519 (Arducam imx519 module)
+   * Sony imx708 (RPi camera module 3)
+* Add support for lens control
+* Report the AutoFocus statistics to uGuzzi
+* Enable the AutoFocus algorithm at the condition that the sensor supports lens control
+
+Changed
+-------
+
+* Update IPA NEO mojom interface with 2026 Q1 release
+   * Remove IPAContextType from setSensorControls
+* Update the NXP neoisp uapi file with v6.18 kernel
+* Synchronize header files to libcamera v0.6.0
+* Change the CameraHelper::controlListSetAGC() prototype with the argument SensorContextTypesaddition to provide the frame context (RGB or Ir)
+
+Fixed
+-------
+
+* Solve issue where pink artifact was observed on bright area
+   * The ox03c10 SPD min again is changed to 4.5 (instead of 1.0)
+* Solve ON_CONFIG settings not applied in a config/start/stop/start calls sequence
+
 Release lf-6.12.49-2.2.0 (December 2025)
 ====================================
 
