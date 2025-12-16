@@ -116,6 +116,7 @@ private:
 	int checkDTPConfig(const IPACameraSensorInfo &sensorInfo);
 	int setUguzziInitialConfig();
 	int setUguzziStreamConfig(const std::map<uint32_t, IPAStream> &streamConfig);
+	int getUguzziInitialSettings();
 	int getCamInfoFromDTP();
 	int getWbLocationFromDTP();
 
@@ -552,6 +553,34 @@ int IPANxpNeo::setUguzziStreamConfig(const std::map<uint32_t, IPAStream> &stream
 	mConfigChanged = true;
 
 	return 0;
+}
+
+/**
+ * \brief Get initial sensor and ISP settings
+ *
+ * This function gets initial sensor and ISP settings by calling
+ * uguzzi_process() with NULL pointers for input sensor data and statistics.
+ * However it is required to call first uguzzi_config() with any valid config
+ * to make sure that the ON_CONFIG settings will be also reported. For this,
+ * the config with the CMD_AE_MODE applies.
+ *
+ * \return 0 on success, or a negative error code otherwise
+ */
+int IPANxpNeo::getUguzziInitialSettings()
+{
+	int err = 0;
+
+	uguzzi_configuration_t cfg{};
+	cfg.channel_id = channel_;
+	cfg.config_id = CMD_AE_MODE;
+	cfg.config_val = 0;
+	err = uguzzi_config(&cfg);
+
+	err |= processUguzzi(NULL, NULL, &mSensorSettingsPkg, &mIspSettingsPkg);
+	if (err)
+		LOG(NxpNeoUguzziIPA, Error) << "Failed to get uGuzzi initial settings";
+
+	return err;
 }
 
 int IPANxpNeo::getCamInfoFromDTP()
@@ -1170,11 +1199,9 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 
 int IPANxpNeo::start()
 {
-	int err = processUguzzi(NULL, NULL, &mSensorSettingsPkg, &mIspSettingsPkg);
-	if (err) {
-		LOG(NxpNeoUguzziIPA, Error) << "Failed to get uGuzzi initial settings";
+	int err = getUguzziInitialSettings();
+	if (err)
 		return err;
-	}
 
 	setControls(0, IPAContextTypeRgb);
 
