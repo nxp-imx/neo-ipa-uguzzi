@@ -3,15 +3,15 @@
 Change Log
 ==========
 
-Release lf-6.18.y-1.0.0 (March 2026)
+Release lf-6.18.2_1.0.0 (March 2026)
 ====================================
 
 Associated versions
 -------------------
 
-* IPA release: lf-6.18.y-1.0.0
+* IPA release: lf-6.18.2_1.0.0
 * IPA version: UGUZZI_IPA_v0.2.6
-* libcamera release: lf-6.18.y-1.0.0
+* libcamera release: lf-6.18.2_1.0.0
 * libcamera version: v0.6.0
 * uGuzzi version: 2025. 7.24[1]
 * Tuning Tool version: 0.95.07
