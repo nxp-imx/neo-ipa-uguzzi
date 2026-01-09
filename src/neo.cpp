@@ -85,6 +85,7 @@ atomic_flag gblIpaInitialized = ATOMIC_FLAG_INIT;
 
 struct IPAHwSettings {
 	uint32_t apiVersion;
+	uint32_t hwCapabilities;
 	bool lensPresent;
 };
 
@@ -147,6 +148,8 @@ private:
 	void convertCtempRegsToAwbCrois(const neoisp_ctemp_reg_stats_s *ctempRegs,
 					imx9x_isp_ctemp_color_rois_output_t *awbCrois);
 
+	void overrideParams(imx9x_isp_cfg_prms_t *cfgParams,
+			    NxpNeoParams *params);
 	void prepareUguzziAecHistograms(const vpipe_settings_hw_t *cfg,
 					const neoisp_rgbir_mem_stats_s *rgbirHist,
 					const neoisp_hist_mem_stats_s *hist,
@@ -748,6 +751,33 @@ void IPANxpNeo::convertCtempRegsToAwbCrois(const neoisp_ctemp_reg_stats_s *ctemp
 	}
 }
 
+/**
+ * \brief Override the ISP params
+ *
+ * This function overrides some ISP params according to hw configuration
+ * or to user configuration defined in configuration file.
+ * For now, only the INALIGN from the PIPE_CONF is overriden.
+ *
+ * \param[in] cfgParams The uGuzzi output params
+ * \param[out] params The ISP params to override
+ */
+void IPANxpNeo::overrideParams(imx9x_isp_cfg_prms_t *cfgParams,
+			       NxpNeoParams *params)
+{
+	if (cfgParams->update[PIPE_CONF_CFG] && config_.overrideInAlign()) {
+		uint8_t inAlign = (context_.hw.hwCapabilities & NEO_CAP_ALIGNMENT_MSB) ? 1 : 0;
+
+		auto config = params->block<BlockParamsType::PipeConf>();
+		/*
+		 * Call to setUpdate(true) is already performed by the uGuzzi
+		 * pipeconf configuration.
+		 */
+
+		config->img_conf_inalign0 = inAlign;
+		config->img_conf_inalign1 = inAlign;
+	}
+}
+
 void IPANxpNeo::prepareUguzziAecHistograms(const vpipe_settings_hw_t *cfg,
 					   const neoisp_rgbir_mem_stats_s *rgbirHist,
 					   const neoisp_hist_mem_stats_s *hist,
@@ -1122,6 +1152,7 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 	sensorModel_ = settings.sensorModel;
 	sensorEntity_ = params.sensorEntity;
 	context_.hw.apiVersion = params.apiVersion;
+	context_.hw.hwCapabilities = params.hwCapabilities;
 	context_.hw.lensPresent = params.lensPresent;
 
 	dataDir_ = utils::dirname(settings.configurationFile) + "/uguzzi";
@@ -1449,6 +1480,8 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 	convertUguzziIspCfg2IspDrvCfg(&mIspSettingsPkg.isp_config[channel_]->isp_cfg_params[0],
 				      mSensorDataPkg.channel[channel_].l2vs_ratio,
 				      &params);
+	overrideParams(&mIspSettingsPkg.isp_config[channel_]->isp_cfg_params[0],
+		       &params);
 
 	paramsComputed.emit(frame, context, params.size());
 }
