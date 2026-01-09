@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
  * neo-config.cpp - Configuration helpers for IPA
- * Copyright 2025 NXP
+ * Copyright 2025-2026 NXP
  */
 
 #include "neo_config.h"
@@ -69,6 +69,13 @@ int IPAFileConfig::load(const std::string &filename)
 	if (ret)
 		LOG(NxpNeoUguzziConfig, Warning)
 			<< "Invalid entity filter section in config file";
+
+	/* Parse the optional override-inalign section */
+	const YamlObject &overrideInAlign = (*root)["override-inalign"];
+	ret = parseOverrideInAlign(overrideInAlign);
+	if (ret)
+		LOG(NxpNeoUguzziConfig, Warning)
+			<< "Invalid override inalign section in config file";
 
 	return ret;
 }
@@ -186,6 +193,19 @@ int IPAFileConfig::parseEntityFilter(const YamlObject &entity)
 {
 	if (entity.isValue())
 		sensorFilter_ = entity.get<std::string>().value_or("");
+
+	return 0;
+}
+
+/**
+ * \brief Parse the override inalign section in the yaml configuration file
+ * \param[in] overrideInAlign The override inalign node in yaml file
+ * \return 0 if no error was detected, a negative error code otherwise
+ */
+int IPAFileConfig::parseOverrideInAlign(const YamlObject &overrideInAlign)
+{
+	if (overrideInAlign.isValue())
+		overrideInAlign_ = overrideInAlign.get<bool>().value_or(true);
 
 	return 0;
 }

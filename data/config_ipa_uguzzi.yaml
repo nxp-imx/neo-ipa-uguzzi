@@ -36,6 +36,12 @@
 #
 # entity-filter     = sensor entity name to initialize as a single sensor
 #                     optional
+#
+# override-inalign  = flag indicating override of the inalign from pipe_conf
+#                     When enabled, the DTP value is ignored and IPA decides the
+#                     inalign setting depending on the platform: 1 for i.MX95
+#                     (MSB-aligned ISI buffers), otherwise 0.
+#                     optional - default: true
 
 %YAML 1.1
 ---
