@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
  * neo.cpp - NXP NEO Image Processing Algorithms
- * Copyright 2024-2025 NXP
+ * Copyright 2024-2026 NXP
  */
 
 #include <sstream>
@@ -82,6 +82,26 @@ namespace ipa::nxpneo {
  *   packets callback to redirect to a function of the class.
  */
 atomic_flag gblIpaInitialized = ATOMIC_FLAG_INIT;
+
+struct IPAHwSettings {
+	uint32_t apiVersion;
+	bool lensPresent;
+};
+
+struct IPASessionConfiguration {
+	struct {
+		Size size;
+		/* bpp per ISP input */
+		std::array<uint32_t, 2> bpps;
+	} sensor;
+
+	IPAModeType pipelineMode;
+};
+
+struct IPAContext {
+	IPAHwSettings hw;
+	IPASessionConfiguration configuration;
+};
 
 class IPANxpNeo : public IPANxpNeoInterface
 {
@@ -170,7 +190,9 @@ private:
 
 	bool uguzziInitialized_{ false };
 	bool metaDataValid_{ false };
-	IPACameraSensorInfo sensorInfo_;
+
+	/* IPA context */
+	struct IPAContext context_;
 
 	uint32_t rawImage0BufferId_;
 	uint32_t rawImage1BufferId_;
@@ -179,9 +201,6 @@ private:
 	uint8_t channel_;
 	std::string sensorModel_;
 	std::string sensorEntity_;
-
-	/* apiVersion for metadata accesses */
-	uint32_t apiVersion_;
 
 	/*
 	 * This flag indicates if IPA init has been enabled or skipped.
@@ -226,12 +245,9 @@ private:
 	ControlInfoMap sensorControls_;
 	ControlInfoMap lensControls_;
 
-	bool lensPresent_ = false;
 	std::optional<int32_t> lensHwPosition_;
 
 	ControlList mdControls_;
-
-	IPAModeType pipelineMode_;
 
 	/*
 	 * this array maintains the frame id for each camera
@@ -440,9 +456,9 @@ int IPANxpNeo::getDTPConfig()
 /**
  * \brief Check the tuning info
  *
- * This function checks if the parameters used for tuning are correct with the
+ * This function checks if the parameters used for tuning are aligned with the
  * sensor information.
- * It is checking the width, height and embedded top lines.
+ * It checks the width, height and embedded top lines.
  * The CFA pattern is not checked since the libcamera ColorFilterArrangement
  * definition doesn't cover the RGBIr format.
  *
@@ -505,7 +521,7 @@ int IPANxpNeo::setUguzziInitialConfig()
 
 	/* Disable the uGuzzi AF processing (0: normal, 1: disabled) */
 	cfg.config_id = CMD_AF_PROCESSING_MODE;
-	cfg.config_val = lensPresent_ ? 0 : 1;
+	cfg.config_val = context_.hw.lensPresent ? 0 : 1;
 	err |= uguzzi_config(&cfg);
 
 	/*
@@ -1051,13 +1067,14 @@ void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 	 * - the RGB context should be used as long as the single-capture
 	 *   controls are used from the CameraHelper in RGBIr dual mode.
 	 */
-	if (pipelineMode_ != IPAModeTypeRgbIrDual ||
-	    (pipelineMode_ == IPAModeTypeRgbIrDual &&
+	IPAModeType &pipelineMode = context_.configuration.pipelineMode;
+	if (pipelineMode != IPAModeTypeRgbIrDual ||
+	    (pipelineMode == IPAModeTypeRgbIrDual &&
 	     context == IPAContextTypeRgb)) {
 		setSensorControls.emit(frame, ctrls);
 	}
 
-	if (!lensPresent_)
+	if (!context_.hw.lensPresent)
 		return;
 
 	if (!lensHwPosition_ || lensHwPosition_.value() != settings->lens_pos) {
@@ -1104,7 +1121,8 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 {
 	sensorModel_ = settings.sensorModel;
 	sensorEntity_ = params.sensorEntity;
-	apiVersion_ = params.apiVersion;
+	context_.hw.apiVersion = params.apiVersion;
+	context_.hw.lensPresent = params.lensPresent;
 
 	dataDir_ = utils::dirname(settings.configurationFile) + "/uguzzi";
 
@@ -1175,7 +1193,8 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 
 #ifdef USE_LIVE_CONTROL
 	LiveControl &liveCtrl = LiveControl::getInstance();
-	const uint16_t socketPort = config_.socketPort(sensorModel_, sensorEntity_);
+	const uint16_t socketPort = config_.socketPort(sensorModel_,
+						       sensorEntity_);
 	int ret = liveCtrl.createSocket(socketPort);
 	if (ret)
 		LOG(NxpNeoUguzziIPA, Error)
@@ -1189,8 +1208,6 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 
 	/* Set the camera helper with sensor control values. */
 	camHelper_->setControls(&params.sensorControlList);
-
-	lensPresent_ = params.lensPresent;
 
 	/* Set the IPA initialization state flag to enabled */
 	enabled_ = true;
@@ -1236,8 +1253,6 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 			<< "Failed to deinitialize Live Control!";
 #endif
 	deinitUguzzi();
-
-	pipelineMode_ = ipaConfig.mode;
 
 	/* Get the tuning info according to the sensor entity and resolution */
 	tuningInfo_ = config_.tuningInfo(sensorModel_, sensorEntity_,
@@ -1336,7 +1351,12 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 
 	sensorControls_ = ipaConfig.sensorControls;
 	lensControls_ = ipaConfig.lensControls;
-	sensorInfo_ = ipaConfig.sensorInfo;
+
+	uint32_t bpp0 = ipaConfig.sensorInfo.bitsPerPixel;
+	uint32_t bpp1 = ipaConfig.bitsPerPixelAuxiliary;
+	context_.configuration.sensor.bpps = { bpp0, bpp1 };
+	context_.configuration.sensor.size = ipaConfig.sensorInfo.outputSize;
+	context_.configuration.pipelineMode = ipaConfig.mode;
 
 	return 0;
 }
@@ -1404,9 +1424,12 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 			buffers_.at(rawImage0BufferId_).planes()[0];
 		metaData = plane.data();
 		uint32_t topLines = camHelper_->attributes()->mdParams.topLines;
-		unsigned int bpp = sensorInfo_.bitsPerPixel;
-		size_t bytepp = bpp <= 8 ? sizeof(uint8_t) : sizeof(uint16_t);
-		unsigned int width = sensorInfo_.outputSize.width;
+		std::array<uint32_t, 2> &bpps =
+			context_.configuration.sensor.bpps;
+		size_t bytepp =
+			bpps[0] <= 8 ? sizeof(uint8_t) : sizeof(uint16_t);
+		unsigned int width =
+			context_.configuration.sensor.size.width;
 		metaSize = topLines * width * bytepp;
 	}
 
@@ -1420,7 +1443,7 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 	unsigned int paramsBufferId =
 		paramsIter != bufferIds.end() ? paramsIter->second : 0;
 	ASSERT(buffers_.count(paramsBufferId));
-	NxpNeoParams params(apiVersion_,
+	NxpNeoParams params(context_.hw.apiVersion,
 			    buffers_.at(paramsBufferId).planes()[0]);
 
 	convertUguzziIspCfg2IspDrvCfg(&mIspSettingsPkg.isp_config[channel_]->isp_cfg_params[0],
@@ -1439,7 +1462,7 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 		statsIter != bufferIds.end() ? statsIter->second : 0;
 	ASSERT(buffers_.count(statsBufferId));
 
-	const NxpNeoStats stats(apiVersion_,
+	const NxpNeoStats stats(context_.hw.apiVersion,
 				buffers_.at(statsBufferId).planes()[0]);
 
 	ControlList &controls = mdControls_;
