@@ -436,21 +436,23 @@ int IPANxpNeo::getDTPConfig()
 	return 0;
 }
 
+
+/**
+ * \brief Check the tuning info
+ *
+ * This function checks if the parameters used for tuning are correct with the
+ * sensor information.
+ * It is checking the width, height and embedded top lines.
+ * The CFA pattern is not checked since the libcamera ColorFilterArrangement
+ * definition doesn't cover the RGBIr format.
+ *
+ * \param[in] sensorInfo The sensor information
+ */
 int IPANxpNeo::checkDTPConfig(const IPACameraSensorInfo &sensorInfo)
 {
-	/**
-	 * \todo make sure this matches what is in uguzzi_cam_info and sensorInfo.cfaPattern
-	 * However sensorInfo.cfaPattern doesn't seem to support RGBIr yet.
-	 */
-
-	/* set sensorBayerPattern to a default value */
-	uguzzi_cam_info_cfa_t sensorBayerPattern = UGUZZI_CAM_INFO_CFA_RGrGbB;
 	const uguzzi_cam_info_cfa_t camInfoPattern =
 		static_cast<uguzzi_cam_info_cfa_t>(
 			camInfoDtp_[channel_]->frame1_cfg.cfa);
-	const bool patternSupported =
-		libcameraCfa2UguzziBayerPattern(sensorInfo.cfaPattern,
-						&sensorBayerPattern);
 
 	uint32_t topLines = camHelper_->attributes()->mdParams.topLines;
 	/* outputSize from sensorInfo is cropped to remove the embedded lines */
@@ -460,22 +462,21 @@ int IPANxpNeo::checkDTPConfig(const IPACameraSensorInfo &sensorInfo)
 		sensorOutputWidth != camInfoDtp_[channel_]->frame1_cfg.width ||
 		sensorOutputHeight != camInfoDtp_[channel_]->frame1_cfg.height ||
 		(topLines &&
-		 topLines != camInfoDtp_[channel_]->frame1_cfg.front_emb_ln_cnt) ||
-		!patternSupported ||
-		sensorBayerPattern != camInfoPattern;
+		 topLines != camInfoDtp_[channel_]->frame1_cfg.front_emb_ln_cnt);
 
+	LOG(NxpNeoUguzziIPA, Debug) << "DTP CFA pattern: " << camInfoPattern;
 	if (sensorConfigDiffers)
 		LOG(NxpNeoUguzziIPA, Warning)
 			<< "Sensor frame and DTP frame configuration differs "
-			<< "[W, H, nb_emb_ln, bayer_pattern] = ["
+			<< "[W, H, nb_emb_ln] = ["
 			<< sensorOutputWidth
 			<< ", " << sensorOutputHeight
-			<< ", " << topLines
-			<< ", " << sensorBayerPattern << "] versus ["
+			<< ", " << topLines << "] versus ["
 			<< camInfoDtp_[channel_]->frame1_cfg.width
 			<< ", " << camInfoDtp_[channel_]->frame1_cfg.height
-			<< ", " << camInfoDtp_[channel_]->frame1_cfg.front_emb_ln_cnt
-			<< ", " << camInfoPattern << "]";
+			<< ", "
+			<< camInfoDtp_[channel_]->frame1_cfg.front_emb_ln_cnt
+			<< "]";
 
 	return 0;
 }
