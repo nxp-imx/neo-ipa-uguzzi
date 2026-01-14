@@ -166,13 +166,15 @@ int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
 		const YamlObject &dtpObj = profile["dtp-file"];
 		tuningInfo.dtpFile = dtpObj.get<std::string>().value_or("");
 
+		static const std::vector<uint32_t> tuningIdDefault =
+			{ kTuningIdRgb, kTuningIdIr };
 		const YamlObject &tuningIdObj = profile["tuning-id"];
 		tuningInfo.tuningId =
-			tuningIdObj.get<uint16_t>().value_or(kTuningId);
+			tuningIdObj.getList<uint32_t>().value_or(tuningIdDefault);
 
 		const YamlObject &tuningModeObj = profile["tuning-mode"];
 		tuningInfo.tuningMode =
-			tuningModeObj.get<uint16_t>().value_or(kTuningMode);
+			tuningModeObj.get<uint32_t>().value_or(kTuningMode);
 
 		tuningInfo.resolution = resolution.value();
 
@@ -255,6 +257,11 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 				});
 			if (iter_res != tuningInfos->end()) {
 				const TuningInfo *tuningInfo = &(*iter_res);
+				std::stringstream ssTuningId;
+				ssTuningId << "{";
+				for (auto id : tuningInfo->tuningId)
+					ssTuningId << " " << id;
+				ssTuningId << " }";
 				LOG(NxpNeoUguzziConfig, Debug)
 					<< "TuningInfo parsed for ["
 					<< entity << "; "
@@ -262,7 +269,7 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 					<< bitDepth << "bpp; mode:"
 					<< mode << "]: ["
 					<< tuningInfo->dtpFile << ", "
-					<< tuningInfo->tuningId << ", "
+					<< ssTuningId.str() << ", "
 					<< tuningInfo->tuningMode << "]";
 				return tuningInfo;
 			}

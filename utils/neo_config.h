@@ -24,8 +24,8 @@ struct TuningInfo {
 	unsigned int bitDepth;
 	IPAModeType mode;
 	std::string dtpFile;
-	unsigned int tuningId;
-	unsigned int tuningMode;
+	std::vector<uint32_t> tuningId;
+	uint32_t tuningMode;
 };
 
 using SensorMap = std::map<std::string, std::vector<TuningInfo>>;
@@ -51,8 +51,9 @@ private:
 	static constexpr uint16_t kSocketPort = 50000;
 	static constexpr unsigned int kBitDepth = 16;
 	static constexpr IPAModeType kMode = IPAModeTypeStandard;
-	static constexpr unsigned int kTuningId = 2010;
-	static constexpr unsigned int kTuningMode = 0;
+	static constexpr uint32_t kTuningIdRgb = 2010;
+	static constexpr uint32_t kTuningIdIr = 2011;
+	static constexpr uint32_t kTuningMode = 0;
 
 	int parseSensors(const YamlObject &sensors);
 	int parseSensorProfiles(const YamlObject &profiles,

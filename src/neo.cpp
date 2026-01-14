@@ -154,11 +154,12 @@ private:
 	int setUguzziStreamConfig(
 		const std::map<uint32_t, IPAStream> &streamConfig);
 	int configUguzziAeMode();
+	uint32_t getTuningId(IPAContextType context);
 	int getUguzziInitialSettings();
 	int getCamInfoFromDTP();
 	int getWbLocationFromDTP();
 
-	void prepareUguzziSensorData(uint32_t frame);
+	void prepareUguzziSensorData(uint32_t frame, unsigned int channel);
 
 	void convertCtempRegsToAwbBbc(const neoisp_ctemp_reg_stats_s *ctempRegs,
 				      imx9x_isp_ctemp_bbc_output_t *awbBbc);
@@ -168,20 +169,21 @@ private:
 
 	void overrideParams(imx9x_isp_cfg_prms_t *cfgParams,
 			    NxpNeoParams *params);
+
 	void prepareUguzziAecHistograms(
+		unsigned int channel,
 		const neoisp_rgbir_mem_stats_s *rgbirHist,
 		const neoisp_hist_mem_stats_s *hist);
-	void prepareUguzziAwbStats(const neoisp_ctemp_reg_stats_s *ctempRegs,
+	void prepareUguzziAwbStats(unsigned int channel,
+				   const neoisp_ctemp_reg_stats_s *ctempRegs,
 				   const neoisp_ctemp_mem_stats_s *ctempMems);
-	void prepareUguzziAfStats(const neoisp_af_reg_stats_s *afRegs,
+	void prepareUguzziAfStats(unsigned int channel,
+				  const neoisp_af_reg_stats_s *afRegs,
 				  const neoisp_drc_mem_stats_s *drcMems);
-	void prepareUguzziStats(const NxpNeoStats *stats);
+	void prepareUguzziStats(unsigned int channel, const NxpNeoStats *stats);
 
-	void updateAwbStatType();
-	int processUguzzi(uguzzi_sensor_data_pkg_t *sensorDataPkg,
-			  uguzzi_stats_data_pkg_t *statsDataPkg,
-			  uguzzi_sensor_settings_pkg_t *sensorSettingsPkg,
-			  uguzzi_isp_settings_pkg_t *ispSettingsPkg);
+	void updateAwbStatType(unsigned int channel);
+	int processUguzzi(unsigned int channel);
 
 	void setInitialControls();
 	void setControls(unsigned int frame);
@@ -198,7 +200,7 @@ private:
 	bool isYuvFormat(const PixelFormat &format) const;
 	bool isMonochrome(const PixelFormat &format) const;
 #ifdef USE_LIVE_CONTROL
-	void processLiveControl(const NxpNeoStats *stats);
+	void processLiveControl(unsigned int channel, const NxpNeoStats *stats);
 #endif
 	int loadConfigFile(const std::string &filename);
 
@@ -215,8 +217,6 @@ private:
 	uint32_t rawImage0BufferId_;
 	uint32_t rawImage1BufferId_;
 
-	uint16_t cameraCnt_;
-	uint8_t channel_;
 	std::string sensorModel_;
 	std::string sensorEntity_;
 
@@ -257,6 +257,12 @@ private:
 	uguzzi_isp_settings_pkg_t ispSettingsPkg_;
 	vpipe_settings_hw_t ispSettings_[UGUZZI_CAMERA_CNT];
 
+	/* Live tuning buffers */
+	ImageBufferViewSetPkg imgBuffViewSetPkg_;
+	IspStatisticsPkg ispStatPkg_;
+	/* \todo Use it when embedded data is not part of the RAW image */
+	EmbeddedDataPkg embDataPkg_;
+
 	std::map<unsigned int, MappedFrameBuffer> buffers_;
 
 	/* Interface to the Camera Helper */
@@ -281,6 +287,9 @@ private:
 	const TuningInfo *tuningInfo_;
 	/* Directory path containing the configuration files for the IPA */
 	std::string dataDir_;
+
+	/* Map between the pipeline context and the uGuzzi channel. */
+	std::map<const IPAContextType, unsigned int> uguzziChannelMap_;
 };
 
 namespace {
@@ -293,6 +302,15 @@ const std::map<const IPAModeType, SensorStreamModes> kSensorStreamModeMap = {
 	{ IPAModeTypeRgbIrDual, SensorStreamDualContext },
 };
 
+/*
+ * For RgbIr dual mode, the tuningId vector is stored as
+ * { tuningIdRgb, tuningIdIr }
+ */
+const std::map<const IPAContextType, unsigned int> kTuningIdRgbIrMap = {
+	{ IPAContextTypeRgb, 0 },
+	{ IPAContextTypeIr, 1 },
+};
+
 /* List of controls handled by the NeoNxp IPA */
 const ControlInfoMap::Map nxpneoControls{};
 
@@ -301,21 +319,6 @@ const ControlInfoMap::Map nxpneoControls{};
 IPANxpNeo::IPANxpNeo()
 	: camFrames{}
 {
-	/*
-	 * Only 1 camera per uGuzzi instance (per IPA process) is
-	 * supported for now. The channel 0 from the uGuzzi instance is used.
-	 *
-	 * However to support later surround view, all cameras will
-	 * be processed by one single uGuzzi instance. Each IPA will access the
-	 * uGuzzi structures using a different uGuzzi channel corresponding
-	 * to their camera.
-	 * IPA would not call uguzzi lib directly but via a proxy operating
-	 * the single library instance.
-	 * The cameraCnt_ will be initialized by the proxy according to the
-	 * number of registered cameras.
-	 */
-	cameraCnt_ = 1;
-	channel_ = 0;
 }
 
 IPANxpNeo::~IPANxpNeo()
@@ -340,17 +343,23 @@ int IPANxpNeo::initializeUguzzi(Size outputSize)
 {
 	/* Initialize uguzzi instance. */
 	uguzzi_init_configuration_t initCfg{};
-	initCfg.camera_cnt = cameraCnt_;
+	uint16_t cameraCnt = 0;
+
+	for (const auto &[context, channel] : uguzziChannelMap_) {
+		initCfg.channel_config[channel].sensor_id = getTuningId(context);
+		initCfg.channel_config[channel].sensor_mode = tuningInfo_->tuningMode;
+		initCfg.channel_config[channel].image_W = outputSize.width;
+		initCfg.channel_config[channel].image_H = outputSize.height;
+		/* ISP always adjusts the pattern to RGGB on entry */
+		initCfg.channel_config[channel].pattern = IMX9X_ISP_BAYER_RGrGbB;
+		initCfg.channel_config[channel].isp_active = 1;
+		cameraCnt++;
+	}
+	ASSERT(cameraCnt <= UGUZZI_CAMERA_CNT);
+
+	initCfg.camera_cnt = cameraCnt;
 	initCfg.dtp_database = dtp_.data();
 	initCfg.dtp_database_size = dtp_.size();
-
-	initCfg.channel_config[channel_].sensor_id = tuningInfo_->tuningId;
-	initCfg.channel_config[channel_].sensor_mode = tuningInfo_->tuningMode;
-	initCfg.channel_config[channel_].image_W = outputSize.width;
-	initCfg.channel_config[channel_].image_H = outputSize.height;
-	/* ISP always adjusts the pattern to RGGB on entry */
-	initCfg.channel_config[channel_].pattern = IMX9X_ISP_BAYER_RGrGbB;
-	initCfg.channel_config[channel_].isp_active = 1;
 
 	int err = uguzzi_init(&initCfg);
 	if (err) {
@@ -378,24 +387,30 @@ void IPANxpNeo::deinitUguzzi()
  */
 void IPANxpNeo::initUguzziProcessData()
 {
-	/* Initialize input aeHistData_ */
-	aeHistData_[channel_].Long = longHistStats_[channel_];
-	aeHistData_[channel_].Short = shortHistStats_[channel_];
-	aeHistData_[channel_].VShort = vShortHistStats_[channel_];
-	aeHistData_[channel_].bins = STAT_HIST_BINS;
+	for (const auto &[context, channel] : uguzziChannelMap_) {
+		/* Initialize input aeHistData_ */
+		aeHistData_[channel].Long = longHistStats_[channel];
+		aeHistData_[channel].Short = shortHistStats_[channel];
+		aeHistData_[channel].VShort = vShortHistStats_[channel];
+		aeHistData_[channel].bins = STAT_HIST_BINS;
 
-	/* Initialize input statsDataPkg_ */
-	statsDataPkg_.channel[channel_].p_ae_stats = &agblbceStats_[channel_];
-	statsDataPkg_.channel[channel_].p_ae_hist = &aeHistData_[channel_];
-	statsDataPkg_.channel[channel_].p_awb_stats = &awbStatsData_[channel_];
-	statsDataPkg_.channel[channel_].p_awb_sw_stats = nullptr;
-	statsDataPkg_.channel[channel_].p_af_stats = &afStatsData_[channel_];
+		/* Initialize input statsDataPkg_ */
+		statsDataPkg_.channel[channel].p_ae_stats =
+			&agblbceStats_[channel];
+		statsDataPkg_.channel[channel].p_ae_hist =
+			&aeHistData_[channel];
+		statsDataPkg_.channel[channel].p_awb_stats =
+			&awbStatsData_[channel];
+		statsDataPkg_.channel[channel].p_awb_sw_stats = nullptr;
+		statsDataPkg_.channel[channel].p_af_stats =
+			&afStatsData_[channel];
 
-	/* Initialize output sensorSettingsPkg_ */
-	sensorSettingsPkg_.channel[channel_] = &sensorSettings_[channel_];
+		/* Initialize output sensorSettingsPkg_ */
+		sensorSettingsPkg_.channel[channel] = &sensorSettings_[channel];
 
-	/* Initialize output ispSettingsPkg_ */
-	ispSettingsPkg_.isp_config[channel_] = &ispSettings_[channel_];
+		/* Initialize output ispSettingsPkg_ */
+		ispSettingsPkg_.isp_config[channel] = &ispSettings_[channel];
+	}
 }
 
 int IPANxpNeo::configureUguzzi(const std::map<uint32_t, IPAStream> &streamConfig)
@@ -513,9 +528,15 @@ int IPANxpNeo::getDTPConfig()
  */
 int IPANxpNeo::checkDTPConfig(const IPACameraSensorInfo &sensorInfo)
 {
+	/*
+	 * Checking the parameters used for tuning can be performed for
+	 * channel 0 only. Indeed the parameters used for tuning are assumed to
+	 * be the same among the uguzzi channels.
+	 */
+	const uint32_t channel = 0;
 	const uguzzi_cam_info_cfa_t camInfoPattern =
 		static_cast<uguzzi_cam_info_cfa_t>(
-			camInfoDtp_[channel_]->frame1_cfg.cfa);
+			camInfoDtp_[channel]->frame1_cfg.cfa);
 
 	uint32_t sensorTopLines = camHelper_->attributes()->mdParams.topLines;
 	/* outputSize from sensorInfo is cropped to remove the embedded lines */
@@ -523,9 +544,9 @@ int IPANxpNeo::checkDTPConfig(const IPACameraSensorInfo &sensorInfo)
 		{ sensorInfo.outputSize.width,
 		  sensorInfo.outputSize.height + sensorTopLines };
 	uint32_t dtpTopLines =
-		camInfoDtp_[channel_]->frame1_cfg.front_emb_ln_cnt;
-	Size dtpOutputSize = { camInfoDtp_[channel_]->frame1_cfg.width,
-			       camInfoDtp_[channel_]->frame1_cfg.height };
+		camInfoDtp_[channel]->frame1_cfg.front_emb_ln_cnt;
+	Size dtpOutputSize = { camInfoDtp_[channel]->frame1_cfg.width,
+			       camInfoDtp_[channel]->frame1_cfg.height };
 	const bool sensorConfigDiffers =
 		sensorOutputSize != dtpOutputSize ||
 		(sensorTopLines && sensorTopLines != dtpTopLines);
@@ -546,20 +567,23 @@ int IPANxpNeo::setUguzziInitialConfig()
 {
 	int err = 0;
 	uguzzi_configuration_t cfg{};
-	cfg.channel_id = channel_;
 
-	cfg.config_id = CMD_AE_FLICKER_MODE;
-	cfg.config_val = UGUZZI_MAINS_FREQ_UNKNOWN;
-	err |= uguzzi_config(&cfg);
+	for (const auto &[context, channel] : uguzziChannelMap_) {
+		cfg.channel_id = channel;
 
-	cfg.config_id = CMD_AE_LFM_MODE;
-	cfg.config_val = UGUZZI_LFM_MODE_OFF;
-	err |= uguzzi_config(&cfg);
+		cfg.config_id = CMD_AE_FLICKER_MODE;
+		cfg.config_val = UGUZZI_MAINS_FREQ_UNKNOWN;
+		err |= uguzzi_config(&cfg);
 
-	/* Disable the uGuzzi AF processing (0: normal, 1: disabled) */
-	cfg.config_id = CMD_AF_PROCESSING_MODE;
-	cfg.config_val = context_.hw.lensPresent ? 0 : 1;
-	err |= uguzzi_config(&cfg);
+		cfg.config_id = CMD_AE_LFM_MODE;
+		cfg.config_val = UGUZZI_LFM_MODE_OFF;
+		err |= uguzzi_config(&cfg);
+
+		/* Disable the uGuzzi AF processing (0: normal, 1: disabled) */
+		cfg.config_id = CMD_AF_PROCESSING_MODE;
+		cfg.config_val = context_.hw.lensPresent ? 0 : 1;
+		err |= uguzzi_config(&cfg);
+	}
 
 	/*
 	 * Raise the flag even if none of the above configs succeeded.
@@ -595,8 +619,9 @@ int IPANxpNeo::setUguzziStreamConfig(
 			rgbFormat = true;
 	}
 
+	/* This is performed only for RGB context. */
 	uguzzi_configuration_t cfg{};
-	cfg.channel_id = 0U;
+	cfg.channel_id = uguzziChannelMap_.at(IPAContextTypeRgb);
 	cfg.config_id = CMD_SCENE_MODE;
 	cfg.config_val = rgbFormat ? 0 : 1;
 	int cfgError = uguzzi_config(&cfg);
@@ -622,10 +647,36 @@ int IPANxpNeo::setUguzziStreamConfig(
 int IPANxpNeo::configUguzziAeMode()
 {
 	uguzzi_configuration_t cfg{};
-	cfg.channel_id = channel_;
-	cfg.config_id = CMD_AE_MODE;
-	cfg.config_val = uGuzziAeMode::normal;
-	return uguzzi_config(&cfg);
+	int err = 0;
+
+	for (const auto &[context, channel] : uguzziChannelMap_) {
+		cfg.channel_id = channel;
+		cfg.config_id = CMD_AE_MODE;
+		cfg.config_val = uGuzziAeMode::normal;
+		err |= uguzzi_config(&cfg);
+	}
+
+	mConfigChanged = true;
+
+	return err;
+}
+
+/**
+ * \brief Get tuning id based on the IPA context type
+ *
+ * For RgbIr dual mode, the index used to store the tuningId is retrieved
+ * with kTuningIdRgbIrMap mapping the index with the IPA context type.
+ * For other pipeline mode, this index is 0.
+ *
+ * \param[in] context The IPA context type
+ */
+uint32_t IPANxpNeo::getTuningId(IPAContextType context)
+{
+	uint8_t index = 0;
+	if (context_.configuration.pipelineMode == IPAModeTypeRgbIrDual)
+		index = kTuningIdRgbIrMap.at(context);
+
+	return tuningInfo_->tuningId[index];
 }
 
 /**
@@ -643,7 +694,12 @@ int IPANxpNeo::getUguzziInitialSettings()
 {
 	int err = configUguzziAeMode();
 
-	err |= processUguzzi(NULL, NULL, &sensorSettingsPkg_, &ispSettingsPkg_);
+	err |= uguzzi_process(NULL, NULL,
+			      &sensorSettingsPkg_, &ispSettingsPkg_);
+
+	for (const auto &[context, channel] : uguzziChannelMap_)
+		updateAwbStatType(channel);
+
 	if (err)
 		LOG(NxpNeoUguzziIPA, Error)
 			<< "Failed to get uGuzzi initial settings";
@@ -653,28 +709,32 @@ int IPANxpNeo::getUguzziInitialSettings()
 
 int IPANxpNeo::getCamInfoFromDTP()
 {
-	uguzzi_dtp_output_t dtpOutput;
-	int dtpError = uguzzi_ext_algs_dtp_query(
-		channel_,
-		UGUZZI_DTP_ID_EXT_ALGS_CAMERA_INFO,
-		UGUZZI_CAM_INFO_DTP_SUBTYPE_ID,
-		&dtpOutput);
-	if (dtpError) {
-		LOG(NxpNeoUguzziIPA, Error)
-			<< "Failed to read camera info DTP for camera "
-			<< channel_;
-		return dtpError;
-	}
+	for (const auto &[context, channel] : uguzziChannelMap_) {
+		uguzzi_dtp_output_t dtpOutput;
+		int dtpError = uguzzi_ext_algs_dtp_query(
+			channel,
+			UGUZZI_DTP_ID_EXT_ALGS_CAMERA_INFO,
+			UGUZZI_CAM_INFO_DTP_SUBTYPE_ID,
+			&dtpOutput);
+		if (dtpError) {
+			LOG(NxpNeoUguzziIPA, Error)
+				<< "Failed to read camera info DTP for channel "
+				<< channel;
+			return dtpError;
+		}
 
-	if (dtpOutput.type != UGUZZI_DTP_DATA_TYPE_FIXED) {
-		LOG(NxpNeoUguzziIPA, Error) << "Wrong DTP type for camera "
-					    << channel_
-					    << "! Only Fixed type is supported";
-		return -EINVAL;
-	}
+		if (dtpOutput.type != UGUZZI_DTP_DATA_TYPE_FIXED) {
+			LOG(NxpNeoUguzziIPA, Error)
+				<< "Wrong DTP type for channel "
+				<< channel
+				<< "! Only Fixed type is supported";
+			return -EINVAL;
+		}
 
-	camInfoDtp_[channel_] =
-		static_cast<const uguzzi_cam_info_dtp_t *>(dtpOutput.x1y1);
+		camInfoDtp_[channel] =
+			static_cast<const uguzzi_cam_info_dtp_t *>(
+				dtpOutput.x1y1);
+	}
 
 	return 0;
 }
@@ -682,31 +742,34 @@ int IPANxpNeo::getCamInfoFromDTP()
 /* Must be called only after successful call to IPANxpNeo::getCamInfoFromDTP() */
 int IPANxpNeo::getWbLocationFromDTP()
 {
-	switch (camInfoDtp_[channel_]->apply_wb_gains_in) {
-	case UGUZZI_CAM_INFO_WB_LOCATION_SENSOR:
-		LOG(NxpNeoUguzziIPA, Debug)
-			<< "WB gains apply in sensor for camera "
-			<< channel_;
-		break;
-	case UGUZZI_CAM_INFO_WB_LOCATION_ISP:
-		LOG(NxpNeoUguzziIPA, Debug)
-			<< "WB gains apply in ISP for camera "
-			<< channel_;
-		break;
-	case UGUZZI_CAM_INFO_WB_LOCATION_OTHER:
-		LOG(NxpNeoUguzziIPA, Error)
-			<< "Unsupported WB gains location for camera "
-			<< channel_;
-		return -EINVAL;
-	default:
-		LOG(NxpNeoUguzziIPA, Error)
-			<< "Unknown WB gains location for camera "
-			<< channel_;
-		return -EINVAL;
-	}
+	for (const auto &[context, channel] : uguzziChannelMap_) {
+		switch (camInfoDtp_[channel]->apply_wb_gains_in) {
+		case UGUZZI_CAM_INFO_WB_LOCATION_SENSOR:
+			LOG(NxpNeoUguzziIPA, Debug)
+				<< "WB gains apply in sensor for channel "
+				<< channel;
+			break;
+		case UGUZZI_CAM_INFO_WB_LOCATION_ISP:
+			LOG(NxpNeoUguzziIPA, Debug)
+				<< "WB gains apply in ISP for channel "
+				<< channel;
+			break;
+		case UGUZZI_CAM_INFO_WB_LOCATION_OTHER:
+			LOG(NxpNeoUguzziIPA, Error)
+				<< "Unsupported WB gains location for channel "
+				<< channel;
+			return -EINVAL;
+		default:
+			LOG(NxpNeoUguzziIPA, Error)
+				<< "Unknown WB gains location for channel "
+				<< channel;
+			return -EINVAL;
+		}
 
-	wbLocation_[channel_] =
-		static_cast<uguzzi_cam_info_wb_location_t>(camInfoDtp_[channel_]->apply_wb_gains_in);
+		wbLocation_[channel] =
+			static_cast<uguzzi_cam_info_wb_location_t>(
+				camInfoDtp_[channel]->apply_wb_gains_in);
+	}
 
 	return 0;
 }
@@ -719,17 +782,17 @@ int IPANxpNeo::getWbLocationFromDTP()
  * The per channel gains applied after AWB block statistics are NOT to be
  * included.
  */
-void IPANxpNeo::prepareUguzziSensorData(uint32_t frame)
+void IPANxpNeo::prepareUguzziSensorData(uint32_t frame, unsigned int channel)
 {
-	if (!sensorDataPkg_.channel[channel_].valid) {
+	if (!sensorDataPkg_.channel[channel].valid) {
 		/* Skip invalid sensor data. */
 		return;
 	}
 
 	const imx9x_isp_cfg_prms_t *ispCfg =
-		&ispSettingsPkg_.isp_config[channel_]->isp_cfg_params[0];
+		&ispSettingsPkg_.isp_config[channel]->isp_cfg_params[0];
 	uguzzi_awb_gains_t *sensorWbGains =
-		&sensorDataPkg_.channel[channel_].wb.wb_gains;
+		&sensorDataPkg_.channel[channel].wb.wb_gains;
 
 	uint64_t redGain = sensorWbGains->red;
 	uint64_t greenGain = sensorWbGains->green;
@@ -767,8 +830,8 @@ void IPANxpNeo::prepareUguzziSensorData(uint32_t frame)
 		blueGain = (blueGain * 65536U) / scale;
 
 		LOG(NxpNeoUguzziIPA, Warning)
-			<< "Too high total WB gains applied for camera "
-			<< channel_
+			<< "Too high total WB gains applied for channel "
+			<< channel
 			<< "Quality of AWB algorithm might be reduced!";
 	}
 
@@ -779,7 +842,7 @@ void IPANxpNeo::prepareUguzziSensorData(uint32_t frame)
 	const bool wbGainsValid = sensorWbGains->red >= 256U &&
 				  sensorWbGains->green >= 256U &&
 				  sensorWbGains->blue >= 256U;
-	sensorDataPkg_.channel[channel_].valid = wbGainsValid ? 1U : 0U;
+	sensorDataPkg_.channel[channel].valid = wbGainsValid ? 1U : 0U;
 
 	/* \todo populate frame number from the metadata when available. */
 	sensorDataPkg_.frame_num = static_cast<uint64_t>(frame);
@@ -849,13 +912,14 @@ void IPANxpNeo::overrideParams(imx9x_isp_cfg_prms_t *cfgParams,
 }
 
 void IPANxpNeo::prepareUguzziAecHistograms(
+	unsigned int channel,
 	const neoisp_rgbir_mem_stats_s *rgbirHist,
 	const neoisp_hist_mem_stats_s *hist)
 {
 	const imx9x_isp_stat_cfg_t &statCfg =
-		ispSettings_[channel_].isp_cfg_params[0].stat;
+		ispSettings_[channel].isp_cfg_params[0].stat;
 	const imx9x_isp_rgbir_stat_cfg_t &rgbirStatCfg =
-		ispSettings_[channel_].isp_cfg_params[0].rgbir_stat;
+		ispSettings_[channel].isp_cfg_params[0].rgbir_stat;
 
 	uint32_t statRoiWidth = statCfg.background.width;
 	uint32_t statRoiHeight = statCfg.background.height;
@@ -921,7 +985,7 @@ void IPANxpNeo::prepareUguzziAecHistograms(
 		hist5 = &rgbirHist->rgbir_hist[HIST_H1_ROI1_START_IDX];
 	}
 
-	ae_histogram_data_hw_t &histData = aeHistData_[channel_];
+	ae_histogram_data_hw_t &histData = aeHistData_[channel];
 	for (uint32_t bin = 0U; bin < STAT_HIST_BINS; bin++) {
 		histData.Long[bin] = *(hist0 + bin) + *(hist3 + bin);
 		histData.Short[bin] = *(hist1 + bin) + *(hist4 + bin);
@@ -962,11 +1026,13 @@ void IPANxpNeo::prepareUguzziAecHistograms(
 	}
 }
 
-void IPANxpNeo::prepareUguzziAwbStats(const neoisp_ctemp_reg_stats_s *ctempRegs,
+void IPANxpNeo::prepareUguzziAwbStats(unsigned int channel,
+				      const neoisp_ctemp_reg_stats_s *ctempRegs,
 				      const neoisp_ctemp_mem_stats_s *ctempMems)
 {
-	const imx9x_isp_awb_stats_type_t statType = awbStatType_[channel_];
-	awb_statistics_data_hw_t &outAwbData = awbStatsData_[channel_];
+	const imx9x_isp_awb_stats_type_t statType = awbStatType_[channel];
+	awb_statistics_data_hw_t &outAwbData = awbStatsData_[channel];
+
 	switch (statType) {
 	case IMX9X_ISP_AWB_STATS_PAXELS:
 		outAwbData.type = IMX9X_ISP_AWB_STATS_PAXELS;
@@ -999,10 +1065,12 @@ void IPANxpNeo::prepareUguzziAwbStats(const neoisp_ctemp_reg_stats_s *ctempRegs,
 	}
 }
 
-void IPANxpNeo::prepareUguzziAfStats(const neoisp_af_reg_stats_s *afRegs,
+void IPANxpNeo::prepareUguzziAfStats(unsigned int channel,
+				     const neoisp_af_reg_stats_s *afRegs,
 				     const neoisp_drc_mem_stats_s *drcMems)
 {
-	af_statistics_data_hw_t &outAfData = afStatsData_[channel_];
+	af_statistics_data_hw_t &outAfData = afStatsData_[channel];
+
 	/* Populate CDAF statistics. */
 	uint32_t *filter0Sums = &outAfData.af_rois_stat.filter0_sums[0];
 	uint32_t *filter1Sums = &outAfData.af_rois_stat.filter1_sums[0];
@@ -1013,49 +1081,51 @@ void IPANxpNeo::prepareUguzziAfStats(const neoisp_af_reg_stats_s *afRegs,
 
 	/* Report AF ROI definitions. */
 	const imx9x_isp_autofocus_roi_cfg_t *roisConfig =
-		&ispSettings_[channel_].isp_cfg_params[0].autofocus.rois_config[0];
+		&ispSettings_[channel].isp_cfg_params[0].autofocus.rois_config[0];
 	imx9x_isp_autofocus_roi_cfg_t *roisOut = &outAfData.rois_config[0];
 	std::copy(roisConfig, roisConfig + AUTOFOCUS_ROI_CNT, roisOut);
 
 	/* Populate DRC local 32x32 grid configuration and statistics. */
 	outAfData.block_stats = drcMems->drc_local_sum;
 	const imx9x_isp_drc_local_tonemap_ctrl_cfg_t *localDrcConfig =
-		&ispSettings_[channel_].isp_cfg_params[0].drc_local_tonemap_ctrl;
+		&ispSettings_[channel].isp_cfg_params[0].drc_local_tonemap_ctrl;
 	outAfData.block_width = localDrcConfig->block_size_x;
 	outAfData.block_height = localDrcConfig->block_size_y;
 	outAfData.block_cnt_horz = 32;
 	outAfData.block_cnt_vert = 32;
 }
 
-void IPANxpNeo::prepareUguzziStats(const NxpNeoStats *stats)
+void IPANxpNeo::prepareUguzziStats(unsigned int channel, const NxpNeoStats *stats)
 {
 	auto rgbirStats = stats->block<BlockStatsType::MRgbIr>();
 	auto histStats = stats->block<BlockStatsType::MHist>();
-	prepareUguzziAecHistograms(rgbirStats.stats(),
+	prepareUguzziAecHistograms(channel,
+				   rgbirStats.stats(),
 				   histStats.stats());
 
 	auto ctempRegStats = stats->block<BlockStatsType::RCTemp>();
 	auto ctempMemStats = stats->block<BlockStatsType::MCTemp>();
-	prepareUguzziAwbStats(ctempRegStats.stats(),
+	prepareUguzziAwbStats(channel,
+			      ctempRegStats.stats(),
 			      ctempMemStats.stats());
 
 	auto drcMemStats = stats->block<BlockStatsType::MDrc>();
-	agblbceStats_[channel_].global_hist_roi0 =
+	agblbceStats_[channel].global_hist_roi0 =
 		drcMemStats->drc_global_hist_roi0;
-	agblbceStats_[channel_].global_hist_roi1 =
+	agblbceStats_[channel].global_hist_roi1 =
 		drcMemStats->drc_global_hist_roi1;
-	agblbceStats_[channel_].local_stats =
+	agblbceStats_[channel].local_stats =
 		drcMemStats->drc_local_sum;
 
 	auto afStats = stats->block<BlockStatsType::RAf>();
-	prepareUguzziAfStats(afStats.stats(),
+	prepareUguzziAfStats(channel, afStats.stats(),
 			     drcMemStats.stats());
 
-	statsDataPkg_.channel[channel_].stats_type = HW_STATS;
-	statsDataPkg_.channel[channel_].valid = 1;
+	statsDataPkg_.channel[channel].stats_type = HW_STATS;
+	statsDataPkg_.channel[channel].valid = 1;
 }
 
-void IPANxpNeo::updateAwbStatType()
+void IPANxpNeo::updateAwbStatType(unsigned int channel)
 {
 	/*
 	 * Since the CTemp configuration can be updated dynamically, the type
@@ -1063,45 +1133,46 @@ void IPANxpNeo::updateAwbStatType()
 	 * stored to provide the proper AWB statistics.
 	 */
 	const imx9x_isp_cfg_prms_t *ispCfg =
-		&ispSettingsPkg_.isp_config[channel_]->isp_cfg_params[0];
+		&ispSettingsPkg_.isp_config[channel]->isp_cfg_params[0];
 
 	if (ispCfg->update[CTEMP_CFG]) {
-		awbStatType_[channel_] = static_cast<imx9x_isp_awb_stats_type_t>(
+		awbStatType_[channel] = static_cast<imx9x_isp_awb_stats_type_t>(
 			ispCfg->ctemp.ctrl.awb_stat_type);
 	}
 }
 
-int IPANxpNeo::processUguzzi(uguzzi_sensor_data_pkg_t *sensorDataPkg,
-			     uguzzi_stats_data_pkg_t *statsDataPkg,
-			     uguzzi_sensor_settings_pkg_t *sensorSettingsPkg,
-			     uguzzi_isp_settings_pkg_t *ispSettingsPkg)
+int IPANxpNeo::processUguzzi(unsigned int channel)
 {
-	int err = uguzzi_process(sensorDataPkg, statsDataPkg,
-				 sensorSettingsPkg, ispSettingsPkg);
+	for (const auto &it : uguzziChannelMap_) {
+		if (channel == it.second)
+			continue;
+		uint8_t nonActiveChannel = it.second;
+		sensorDataPkg_.channel[nonActiveChannel].valid = 0;
+		statsDataPkg_.channel[nonActiveChannel].valid = 0;
+	}
+
+	int err = uguzzi_process(&sensorDataPkg_, &statsDataPkg_,
+				 &sensorSettingsPkg_, &ispSettingsPkg_);
 	if (err)
 		return err;
 
-	updateAwbStatType();
+	updateAwbStatType(channel);
 
 	return err;
 }
 
 #ifdef USE_LIVE_CONTROL
-void IPANxpNeo::processLiveControl(const NxpNeoStats *stats)
+void IPANxpNeo::processLiveControl(unsigned int channel, const NxpNeoStats *stats)
 {
-	/* \todo Use it when embedded data is not part of the RAW image */
-	EmbeddedDataPkg embDataPkg = {};
-	ImageBufferViewSetPkg imgBuffViewSetPkg = {};
-	IspStatisticsPkg ispStatPkg = {};
 	LiveControl &liveCtrl = LiveControl::getInstance();
 
 	if (buffers_.count(rawImage0BufferId_)) {
 		const MappedBuffer::Plane &rawBufferPlane =
 			buffers_.at(rawImage0BufferId_).planes()[0];
 
-		imgBuffViewSetPkg.channel[channel_].view[IMAGE_BUFFER_DCG].data =
+		imgBuffViewSetPkg_.channel[channel].view[IMAGE_BUFFER_DCG].data =
 			static_cast<const void *>(rawBufferPlane.data());
-		imgBuffViewSetPkg.channel[channel_].view[IMAGE_BUFFER_DCG].size =
+		imgBuffViewSetPkg_.channel[channel].view[IMAGE_BUFFER_DCG].size =
 			static_cast<uint32_t>(rawBufferPlane.size_bytes());
 	}
 
@@ -1109,18 +1180,18 @@ void IPANxpNeo::processLiveControl(const NxpNeoStats *stats)
 		const MappedBuffer::Plane &rawBufferPlane =
 			buffers_.at(rawImage1BufferId_).planes()[0];
 
-		imgBuffViewSetPkg.channel[channel_].view[IMAGE_BUFFER_VS].data =
+		imgBuffViewSetPkg_.channel[channel].view[IMAGE_BUFFER_VS].data =
 			static_cast<const void *>(rawBufferPlane.data());
-		imgBuffViewSetPkg.channel[channel_].view[IMAGE_BUFFER_VS].size =
+		imgBuffViewSetPkg_.channel[channel].view[IMAGE_BUFFER_VS].size =
 			static_cast<uint32_t>(rawBufferPlane.size_bytes());
 	}
 
-	ispStatPkg.channel[channel_] = stats;
+	ispStatPkg_.channel[channel] = stats;
 
 	int err = liveCtrl.handleCmd(&sensorDataPkg_,
-				     &embDataPkg,
-				     &imgBuffViewSetPkg,
-				     &ispStatPkg,
+				     &embDataPkg_,
+				     &imgBuffViewSetPkg_,
+				     &ispStatPkg_,
 				     LIVE_CONTROL_CMD_HANDLE_TIMEOUT_MS);
 	if (err)
 		LOG(NxpNeoUguzziIPA, Error)
@@ -1151,39 +1222,40 @@ void IPANxpNeo::setControls(unsigned int frame)
 
 	ControlList ctrls(sensorControls_);
 
-	uguzzi_sensor_settings_t *settings = sensorSettingsPkg_.channel[channel_];
-
-	uint32_t aGainQ16 = settings->exp_n.exp.again;
-	uint32_t dGainQ16 = settings->exp_n.exp.dgain;
-	uint64_t gainQ16 = static_cast<uint64_t>(aGainQ16) * dGainQ16 / UQ16_1;
-	double gain = static_cast<double>(gainQ16) / UQ16_1;
-
-	Duration exposure = settings->exp_n.exp.exposure * 1.0us;
-
 	std::vector<Duration> exposures;
 	std::vector<double> gains;
-	/*
-	 * \todo: Send value specific to each active context.
-	 * For now, send the same values for all active context.
-	 */
-	exposures.insert(exposures.begin(),
-			 context_.configuration.activeContexts.size(),
-			 exposure);
-	gains.insert(gains.begin(),
-		     context_.configuration.activeContexts.size(),
-		     gain);
+	for (const auto &[context, channel] : uguzziChannelMap_) {
+		uguzzi_sensor_settings_t *settings =
+			sensorSettingsPkg_.channel[channel];
+
+		uint32_t aGainQ16 = settings->exp_n.exp.again;
+		uint32_t dGainQ16 = settings->exp_n.exp.dgain;
+		uint64_t gainQ16 = static_cast<uint64_t>(
+			aGainQ16) * dGainQ16 / UQ16_1;
+		double gain = static_cast<double>(gainQ16) / UQ16_1;
+
+		Duration exposure = settings->exp_n.exp.exposure * 1.0us;
+
+		exposures.push_back(exposure);
+		gains.push_back(gain);
+	}
 	camHelper_->controlListSetAGC(&ctrls,
 				      Span<Duration>(exposures),
 				      Span<double>(gains));
 
-	if (wbLocation_[channel_] == UGUZZI_CAM_INFO_WB_LOCATION_SENSOR) {
+	/* WB gains only apply to RGB stream. */
+	unsigned int channelRgb = uguzziChannelMap_.at(IPAContextTypeRgb);
+	uguzzi_sensor_settings_t *settingsRgb =
+		sensorSettingsPkg_.channel[channelRgb];
+	if (wbLocation_[channelRgb] == UGUZZI_CAM_INFO_WB_LOCATION_SENSOR) {
 		/* WB in sensor */
 		std::array<double, 4> wbGains;
+		uguzzi_awb_gains_t &uguzziWbGains = settingsRgb->wb.wb_gains;
 		/* R, Gr, Gb, B */
-		wbGains[0] = static_cast<double>(settings->wb.wb_gains.red) / UQ8_1;
-		wbGains[1] = static_cast<double>(settings->wb.wb_gains.green) / UQ8_1;
+		wbGains[0] = static_cast<double>(uguzziWbGains.red) / UQ8_1;
+		wbGains[1] = static_cast<double>(uguzziWbGains.green) / UQ8_1;
 		wbGains[2] = wbGains[1];
-		wbGains[3] = static_cast<double>(settings->wb.wb_gains.blue) / UQ8_1;
+		wbGains[3] = static_cast<double>(uguzziWbGains.blue) / UQ8_1;
 
 		camHelper_->controlListSetAWB(&ctrls, Span<const double, 4>(wbGains));
 	}
@@ -1195,8 +1267,9 @@ void IPANxpNeo::setControls(unsigned int frame)
 	if (!context_.hw.lensPresent)
 		return;
 
-	if (!lensHwPosition_ || lensHwPosition_.value() != settings->lens_pos) {
-		lensHwPosition_ = settings->lens_pos;
+	/* For now, autofocus settings are used from the RGB context. */
+	if (!lensHwPosition_ || lensHwPosition_.value() != settingsRgb->lens_pos) {
+		lensHwPosition_ = settingsRgb->lens_pos;
 		ControlList lensControls(lensControls_);
 		ControlValue value(lensHwPosition_.value());
 		lensControls.set(V4L2_CID_FOCUS_ABSOLUTE, value);
@@ -1272,13 +1345,6 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 			<< "Failed to create camera helper for "
 			<< sensorModel_;
 		return -ENODEV;
-	}
-
-	if (cameraCnt_ > UGUZZI_CAMERA_CNT) {
-		LOG(NxpNeoUguzziIPA, Error)
-			<< cameraCnt_ << " cameras requested but only "
-			<< UGUZZI_CAMERA_CNT << " are supported";
-		return -EINVAL;
 	}
 
 	/* \note no user controls are supported */
@@ -1376,6 +1442,11 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 
 	setSessionConfiguration(ipaConfig);
 
+	/* Assign the uguzzi channel with the context type. */
+	uguzziChannelMap_[IPAContextTypeRgb] = 0;
+	if (ipaConfig.mode == IPAModeTypeRgbIrDual)
+		uguzziChannelMap_[IPAContextTypeIr] = 1;
+
 	/* Get the tuning info according to the sensor entity and resolution */
 	tuningInfo_ = config_.tuningInfo(sensorModel_, sensorEntity_,
 					 sensorInfo->outputSize,
@@ -1418,7 +1489,7 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	 * part of the proxy operating the single instance.
 	 */
 	if (initializeTestsUguzzi(Span<uint32_t>(IPANxpNeo::camFrames),
-				  cameraCnt_,
+				  uguzziChannelMap_.size(),
 				  sensorModel_))
 		LOG(NxpNeoUguzziIPA, Error) << "Failed to initialize tests!";
 #endif
@@ -1446,9 +1517,10 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	 * Live Connect gets attached to the initialized uGuzzi,
 	 * hence, live connect should be initialized with
 	 * uguzzi_live_tuning_init() once uGuzzi is initialized.
+	 * Use uGuzzi channel 0 to get width and height.
 	 */
-	ret = liveCtrl.init(camInfoDtp_[channel_]->frame1_cfg.width,
-			    camInfoDtp_[channel_]->frame1_cfg.height);
+	ret = liveCtrl.init(camInfoDtp_[0]->frame1_cfg.width,
+			    camInfoDtp_[0]->frame1_cfg.height);
 	if (ret)
 		LOG(NxpNeoUguzziIPA, Error)
 			<< "Failed to initialize Live Control!";
@@ -1477,6 +1549,11 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 
 	sensorControls_ = ipaConfig.sensorControls;
 	lensControls_ = ipaConfig.lensControls;
+
+	/* Clear the Live tuning buffers */
+	imgBuffViewSetPkg_ = {};
+	ispStatPkg_ = {};
+	embDataPkg_ = {};
 
 	return 0;
 }
@@ -1521,8 +1598,9 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 	ControlList &controls = mdControls_;
 	controls = ControlList(md::controlIdMap);
 
-	/* update the frame id (only cam=0 is supported for now) */
-	camFrames[channel_] = frame;
+	unsigned int channel = uguzziChannelMap_.at(context);
+	/* Update the frame id. */
+	camFrames[channel] = frame;
 
 	uint8_t *metaData = nullptr;
 	size_t metaSize = 0;
@@ -1577,10 +1655,10 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 			    buffers_.at(paramsBufferId).planes()[0]);
 
 	convertUguzziIspCfg2IspDrvCfg(
-		&ispSettingsPkg_.isp_config[channel_]->isp_cfg_params[0],
-		sensorDataPkg_.channel[channel_].l2vs_ratio,
+		&ispSettingsPkg_.isp_config[channel]->isp_cfg_params[0],
+		sensorDataPkg_.channel[channel].l2vs_ratio,
 		&params);
-	overrideParams(&ispSettingsPkg_.isp_config[channel_]->isp_cfg_params[0],
+	overrideParams(&ispSettingsPkg_.isp_config[channel]->isp_cfg_params[0],
 		       &params);
 
 	paramsComputed.emit(frame, context, params.size());
@@ -1612,17 +1690,15 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 		camHelper_->sensorControlsToMetaData(&sensorControls, &controls);
 	}
 
-	uguzzi_sensor_data_t *sensorData = &sensorDataPkg_.channel[channel_];
+	unsigned int channel = uguzziChannelMap_.at(context);
+	uguzzi_sensor_data_t *sensorData = &sensorDataPkg_.channel[channel];
 	metaDataToSensorData(&controls, sensorData);
 
-	prepareUguzziSensorData(frame);
+	prepareUguzziSensorData(frame, channel);
 
-	prepareUguzziStats(&stats);
+	prepareUguzziStats(channel, &stats);
 
-	int err = processUguzzi(&sensorDataPkg_,
-				&statsDataPkg_,
-				&sensorSettingsPkg_,
-				&ispSettingsPkg_);
+	int err = processUguzzi(channel);
 	if (err)
 		LOG(NxpNeoUguzziIPA, Error)
 			<< "Failed to process ISP statistics";
@@ -1633,10 +1709,11 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 		 * Metadata are only filled in RGB context.
 		 * This is to avoid overwritten the same control in Ir context.
 		 */
+		unsigned int channelRGB = uguzziChannelMap_.at(context);
 		metadata.set(controls::Lux,
-			     static_cast<float>(ispSettingsPkg_.uguzzi_metadata[channel_].aec_info[22]));
+			     static_cast<float>(ispSettingsPkg_.uguzzi_metadata[channelRGB].aec_info[22]));
 		metadata.set(controls::ColourTemperature,
-			     sensorSettingsPkg_.channel[channel_]->wb.colour_temp);
+			     sensorSettingsPkg_.channel[channelRGB]->wb.colour_temp);
 		/* add more as needed */
 	}
 	/* Set processed flag for this context. */
@@ -1645,7 +1722,7 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 	setControls(frame);
 
 #ifdef USE_LIVE_CONTROL
-	processLiveControl(&stats);
+	processLiveControl(channel, &stats);
 #endif
 	metadataReady.emit(frame, context, metadata);
 }
