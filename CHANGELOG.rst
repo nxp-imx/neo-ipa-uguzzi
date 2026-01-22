@@ -30,6 +30,7 @@ Added
 * Add support for lens control
 * Report the AutoFocus statistics to uGuzzi
 * Enable the AutoFocus algorithm at the condition that the sensor supports lens control
+* Add ox05b1s DTP for RGBIr normal mode, resolution 2592x1944 and 10 bit depth
 
 Changed
 -------
