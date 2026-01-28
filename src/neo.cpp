@@ -120,7 +120,7 @@ private:
 	int getCamInfoFromDTP();
 	int getWbLocationFromDTP();
 
-	void prepareUguzziSensorData();
+	void prepareUguzziSensorData(uint32_t frame);
 
 	void convertCtempRegsToAwbBbc(const neoisp_ctemp_reg_stats_s *ctempRegs,
 				      imx9x_isp_ctemp_bbc_output_t *awbBbc);
@@ -649,7 +649,7 @@ int IPANxpNeo::getWbLocationFromDTP()
  * AWB block statistics are generated.
  * The per channel gains applied after AWB block statistics are NOT to be included.
  */
-void IPANxpNeo::prepareUguzziSensorData()
+void IPANxpNeo::prepareUguzziSensorData(uint32_t frame)
 {
 	if (!mSensorDataPkg.channel[channel_].valid) {
 		/* Skip invalid sensor data. */
@@ -707,6 +707,9 @@ void IPANxpNeo::prepareUguzziSensorData()
 				  sensorWbGains->green >= 256U &&
 				  sensorWbGains->blue >= 256U;
 	mSensorDataPkg.channel[channel_].valid = wbGainsValid ? 1U : 0U;
+
+	/* \todo populate frame number from the metadata when available. */
+	mSensorDataPkg.frame_num = static_cast<uint64_t>(frame);
 }
 
 void IPANxpNeo::convertCtempRegsToAwbBbc(const neoisp_ctemp_reg_stats_s *ctempRegs,
@@ -1459,7 +1462,7 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 	uguzzi_sensor_data_t *sensorData = &mSensorDataPkg.channel[channel_];
 	metaDataToSensorData(&controls, sensorData);
 
-	prepareUguzziSensorData();
+	prepareUguzziSensorData(frame);
 
 	prepareUguzziStats(&stats);
 
