@@ -1041,17 +1041,7 @@ void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 	camHelper_->controlListSetAGC(&ctrls, kSensorContextMap.at(context),
 				      exposure, gain);
 
-	if ((wbLocation_[channel_] == UGUZZI_CAM_INFO_WB_LOCATION_ISP) && (!frame)) {
-		/* WB in ISP, set sensor WB gains to 1.0 only for 1st frame */
-		/*
-		 * uGuzzi issue is that for UGUZZI_CAM_INFO_WB_LOCATION_ISP,
-		 * settings->wb.wb_gains has incorrect value,
-		 * hence hard coded values 1.0 are used instead.
-		 */
-		std::array<double, 4> wbGains = { 1.0, 1.0, 1.0, 1.0 };
-		camHelper_->controlListSetAWB(&ctrls, Span<const double, 4>(wbGains));
-
-	} else if (wbLocation_[channel_] == UGUZZI_CAM_INFO_WB_LOCATION_SENSOR) {
+	if (wbLocation_[channel_] == UGUZZI_CAM_INFO_WB_LOCATION_SENSOR) {
 		/* WB in sensor */
 		std::array<double, 4> wbGains;
 		/* R, Gr, Gb, B */
