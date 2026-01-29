@@ -176,6 +176,7 @@ private:
 			  uguzzi_sensor_settings_pkg_t *sensorSettingsPkg,
 			  uguzzi_isp_settings_pkg_t *ispSettingsPkg);
 
+	void setInitialControls();
 	void setControls(unsigned int frame);
 	bool libcameraCfa2UguzziBayerPattern(uint32_t cfa,
 					     uguzzi_cam_info_cfa_t *pattern);
@@ -1055,6 +1056,11 @@ void IPANxpNeo::processLiveControl(const NxpNeoStats *stats)
 }
 #endif
 
+void IPANxpNeo::setInitialControls()
+{
+	setControls(0);
+}
+
 void IPANxpNeo::setControls(unsigned int frame)
 {
 	/*
@@ -1259,7 +1265,7 @@ int IPANxpNeo::start()
 	if (err)
 		return err;
 
-	setControls(0);
+	setInitialControls();
 
 	return 0;
 }
