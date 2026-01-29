@@ -1657,6 +1657,12 @@ void IPANxpNeo::metaDataToSensorData(
 	sensorData->sensor_temperature_c =
 		static_cast<uint16_t>((temperature * UQ8_1));
 
+	/*
+	 * There is no sensor feedback from the camera about the lens position
+	 * so simply return the controlled value when it is available.
+	 */
+	sensorData->applied_lens_pos = lensHwPosition_ ? lensHwPosition_.value() : 0;
+
 	sensorData->valid = mdValid;
 }
 
