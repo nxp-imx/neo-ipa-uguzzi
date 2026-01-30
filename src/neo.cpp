@@ -95,12 +95,19 @@ struct IPASessionConfiguration {
 		std::array<uint32_t, 2> bpps;
 	} sensor;
 
+	std::vector<IPAContextType> activeContexts;
 	IPAModeType pipelineMode;
+};
+
+
+struct IPAFrameContext {
+	std::map<IPAContextType, bool> processed;
 };
 
 struct IPAContext {
 	IPAHwSettings hw;
 	IPASessionConfiguration configuration;
+	IPAFrameContext frameContext;
 };
 
 class IPANxpNeo : public IPANxpNeoInterface
@@ -1351,6 +1358,12 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	context_.configuration.sensor.size = ipaConfig.sensorInfo.outputSize;
 	context_.configuration.pipelineMode = ipaConfig.mode;
 
+	/* Initialize active RGB/Ir contexts. */
+	context_.configuration.activeContexts =
+		context_.configuration.pipelineMode == IPAModeTypeRgbIrDual ?
+		std::vector<IPAContextType> { IPAContextTypeRgb, IPAContextTypeIr } :
+		std::vector<IPAContextType> { IPAContextTypeRgb };
+
 	return 0;
 }
 
@@ -1378,6 +1391,12 @@ void IPANxpNeo::queueRequest(const uint32_t frame, const ControlList &controls)
 {
 	(void)frame;
 	(void)controls;
+
+	/* Clear the IPA frame context before processing a new frame. */
+	context_.frameContext = {};
+
+	for (const auto &ctxt : context_.configuration.activeContexts)
+		context_.frameContext.processed[ctxt] = false;
 }
 
 void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context,
@@ -1498,6 +1517,8 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 			     mSensorSettingsPkg.channel[channel_]->wb.colour_temp);
 		/* add more as needed */
 	}
+	/* Set processed flag for this context. */
+	context_.frameContext.processed.at(context) = true;
 
 	setControls(frame, context);
 
