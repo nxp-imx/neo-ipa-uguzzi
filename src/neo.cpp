@@ -173,7 +173,7 @@ private:
 			  uguzzi_sensor_settings_pkg_t *sensorSettingsPkg,
 			  uguzzi_isp_settings_pkg_t *ispSettingsPkg);
 
-	void setControls(unsigned int frame, IPAContextType context);
+	void setControls(unsigned int frame);
 	bool libcameraCfa2UguzziBayerPattern(uint32_t cfa,
 					     uguzzi_cam_info_cfa_t *pattern);
 	std::string controlListToString(const ControlList *ctrls) const;
@@ -271,7 +271,6 @@ private:
 
 	/* Map between the IPA stream mode and the cameraHelper stream mode. */
 	static const std::map<const IPAModeType, SensorStreamModes> kSensorStreamModeMap;
-	static const std::map<const IPAContextType, SensorContextTypes> kSensorContextMap;
 };
 
 const std::map<const IPAModeType, SensorStreamModes> IPANxpNeo::kSensorStreamModeMap = {
@@ -279,11 +278,6 @@ const std::map<const IPAModeType, SensorStreamModes> IPANxpNeo::kSensorStreamMod
 	{ IPAModeTypeHdrMerge, SensorStreamHdr },
 	{ IPAModeTypeRgbIr, SensorStreamRgbIr },
 	{ IPAModeTypeRgbIrDual, SensorStreamDualContext },
-};
-
-const std::map<const IPAContextType, SensorContextTypes> IPANxpNeo::kSensorContextMap = {
-	{ IPAContextTypeRgb, SensorContextRgb },
-	{ IPAContextTypeIr, SensorContextIr },
 };
 
 namespace {
@@ -1031,8 +1025,17 @@ void IPANxpNeo::processLiveControl(const NxpNeoStats *stats)
 }
 #endif
 
-void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
+void IPANxpNeo::setControls(unsigned int frame)
 {
+	/*
+	 * Send controls if:
+	 * - For any active contexts and algo are processed for all active contexts.
+	 * - For initial controls (before 1st frame start), no active frame contexts yet.
+	 */
+	for (const auto &processedIt : context_.frameContext.processed)
+		if (!processedIt.second)
+			return;
+
 	ControlList ctrls(sensorControls_);
 
 	/* \todo what about harmonized cameras? How to set controls per camera? */
@@ -1045,8 +1048,22 @@ void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 	double gain = static_cast<double>(gainQ16) / UQ16_1;
 
 	Duration exposure = settings->exp_n.exp.exposure * 1.0us;
-	camHelper_->controlListSetAGC(&ctrls, kSensorContextMap.at(context),
-				      exposure, gain);
+
+	std::vector<Duration> exposures;
+	std::vector<double> gains;
+	/*
+	 * \todo: Send value specific to each active context.
+	 * For now, send the same values for all active context.
+	 */
+	exposures.insert(exposures.begin(),
+			 context_.configuration.activeContexts.size(),
+			 exposure);
+	gains.insert(gains.begin(),
+		     context_.configuration.activeContexts.size(),
+		     gain);
+	camHelper_->controlListSetAGC(&ctrls,
+				      Span<Duration>(exposures),
+				      Span<double>(gains));
 
 	if (wbLocation_[channel_] == UGUZZI_CAM_INFO_WB_LOCATION_SENSOR) {
 		/* WB in sensor */
@@ -1062,17 +1079,7 @@ void IPANxpNeo::setControls(unsigned int frame, IPAContextType context)
 
 	LOG(NxpNeoUguzziIPA, Debug) << logSensorParams(frame, &mdControls_, &ctrls);
 
-	/*
-	 * In RGBIr dual mode, the controls should be sent for one context only:
-	 * - the RGB context should be used as long as the single-capture
-	 *   controls are used from the CameraHelper in RGBIr dual mode.
-	 */
-	IPAModeType &pipelineMode = context_.configuration.pipelineMode;
-	if (pipelineMode != IPAModeTypeRgbIrDual ||
-	    (pipelineMode == IPAModeTypeRgbIrDual &&
-	     context == IPAContextTypeRgb)) {
-		setSensorControls.emit(frame, ctrls);
-	}
+	setSensorControls.emit(frame, ctrls);
 
 	if (!context_.hw.lensPresent)
 		return;
@@ -1221,7 +1228,7 @@ int IPANxpNeo::start()
 	if (err)
 		return err;
 
-	setControls(0, IPAContextTypeRgb);
+	setControls(0);
 
 	return 0;
 }
@@ -1520,7 +1527,7 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 	/* Set processed flag for this context. */
 	context_.frameContext.processed.at(context) = true;
 
-	setControls(frame, context);
+	setControls(frame);
 
 #ifdef USE_LIVE_CONTROL
 	processLiveControl(&stats);
