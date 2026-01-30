@@ -39,7 +39,8 @@ Changed
    * Remove IPAContextType from setSensorControls
 * Update the NXP neoisp uapi file with v6.18 kernel
 * Synchronize header files to libcamera v0.6.0
-* Change the CameraHelper::controlListSetAGC() prototype with the argument SensorContextTypesaddition to provide the frame context (RGB or Ir)
+* Change the CameraHelper::controlListSetAGC() prototype where span of values for the exposure and gain is provided instead of a single value.
+* Remove the sensor WB gains reset to 1.0 when WB gains apply in ISP
 
 Fixed
 -------
