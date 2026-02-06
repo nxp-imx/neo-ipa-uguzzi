@@ -139,6 +139,7 @@ private:
 	int initializeUguzzi(Size outputSize);
 	void deinitUguzzi();
 	int configureUguzzi(const std::map<uint32_t, IPAStream> &streamConfig);
+	void setSessionConfiguration(const IPAConfigInfo &ipaConfig);
 	int verifySensorToInit();
 	int getDTPConfig();
 	int checkDTPConfig(const IPACameraSensorInfo &sensorInfo);
@@ -391,6 +392,21 @@ int IPANxpNeo::configureUguzzi(const std::map<uint32_t, IPAStream> &streamConfig
 	LOG(NxpNeoUguzziIPA, Debug) << "Successful uGuzzi stream config!";
 
 	return 0;
+}
+
+void IPANxpNeo::setSessionConfiguration(const IPAConfigInfo &ipaConfig)
+{
+	uint32_t bpp0 = ipaConfig.sensorInfo.bitsPerPixel;
+	uint32_t bpp1 = ipaConfig.bitsPerPixelAuxiliary;
+	context_.configuration.sensor.bpps = { bpp0, bpp1 };
+	context_.configuration.sensor.size = ipaConfig.sensorInfo.outputSize;
+	context_.configuration.pipelineMode = ipaConfig.mode;
+
+	/* Initialize active RGB/Ir contexts. */
+	context_.configuration.activeContexts =
+		context_.configuration.pipelineMode == IPAModeTypeRgbIrDual ?
+		std::vector<IPAContextType> { IPAContextTypeRgb, IPAContextTypeIr } :
+		std::vector<IPAContextType> { IPAContextTypeRgb };
 }
 
 /**
@@ -1298,6 +1314,8 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 #endif
 	deinitUguzzi();
 
+	setSessionConfiguration(ipaConfig);
+
 	/* Get the tuning info according to the sensor entity and resolution */
 	tuningInfo_ = config_.tuningInfo(sensorModel_, sensorEntity_,
 					 sensorInfo->outputSize,
@@ -1395,18 +1413,6 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 
 	sensorControls_ = ipaConfig.sensorControls;
 	lensControls_ = ipaConfig.lensControls;
-
-	uint32_t bpp0 = ipaConfig.sensorInfo.bitsPerPixel;
-	uint32_t bpp1 = ipaConfig.bitsPerPixelAuxiliary;
-	context_.configuration.sensor.bpps = { bpp0, bpp1 };
-	context_.configuration.sensor.size = ipaConfig.sensorInfo.outputSize;
-	context_.configuration.pipelineMode = ipaConfig.mode;
-
-	/* Initialize active RGB/Ir contexts. */
-	context_.configuration.activeContexts =
-		context_.configuration.pipelineMode == IPAModeTypeRgbIrDual ?
-		std::vector<IPAContextType> { IPAContextTypeRgb, IPAContextTypeIr } :
-		std::vector<IPAContextType> { IPAContextTypeRgb };
 
 	return 0;
 }
