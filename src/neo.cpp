@@ -138,6 +138,10 @@ public:
 			  const ControlList &sensorControls) override;
 
 private:
+	enum uGuzziAeMode {
+		harmonized = 0,
+		normal,
+	};
 	int initializeUguzzi(Size outputSize);
 	void deinitUguzzi();
 	void initUguzziProcessData();
@@ -149,6 +153,7 @@ private:
 	int setUguzziInitialConfig();
 	int setUguzziStreamConfig(
 		const std::map<uint32_t, IPAStream> &streamConfig);
+	int configUguzziAeMode();
 	int getUguzziInitialSettings();
 	int getCamInfoFromDTP();
 	int getWbLocationFromDTP();
@@ -540,16 +545,8 @@ int IPANxpNeo::checkDTPConfig(const IPACameraSensorInfo &sensorInfo)
 int IPANxpNeo::setUguzziInitialConfig()
 {
 	int err = 0;
-
 	uguzzi_configuration_t cfg{};
 	cfg.channel_id = channel_;
-	cfg.config_id = CMD_AE_MODE;
-	/*
-	 * Use harmonized AEC by default because it is the most likely use case
-	 * for the IPA handling multiple sensors
-	 */
-	cfg.config_val = 0;
-	err |= uguzzi_config(&cfg);
 
 	cfg.config_id = CMD_AE_FLICKER_MODE;
 	cfg.config_val = UGUZZI_MAINS_FREQ_UNKNOWN;
@@ -615,6 +612,23 @@ int IPANxpNeo::setUguzziStreamConfig(
 }
 
 /**
+ * \brief Configure the uGuzzi AE mode
+ *
+ * This functions sets the normal (non harmonized) uGuzzi AEC mode.
+ * /todo: This setting can be adapted using a configuration parameter.
+ *
+ * \return 0 on success, or a negative error code otherwise
+ */
+int IPANxpNeo::configUguzziAeMode()
+{
+	uguzzi_configuration_t cfg{};
+	cfg.channel_id = channel_;
+	cfg.config_id = CMD_AE_MODE;
+	cfg.config_val = uGuzziAeMode::normal;
+	return uguzzi_config(&cfg);
+}
+
+/**
  * \brief Get initial sensor and ISP settings
  *
  * This function gets initial sensor and ISP settings by calling
@@ -627,13 +641,7 @@ int IPANxpNeo::setUguzziStreamConfig(
  */
 int IPANxpNeo::getUguzziInitialSettings()
 {
-	int err = 0;
-
-	uguzzi_configuration_t cfg{};
-	cfg.channel_id = channel_;
-	cfg.config_id = CMD_AE_MODE;
-	cfg.config_val = 0;
-	err = uguzzi_config(&cfg);
+	int err = configUguzziAeMode();
 
 	err |= processUguzzi(NULL, NULL, &sensorSettingsPkg_, &ispSettingsPkg_);
 	if (err)
