@@ -1149,6 +1149,9 @@ void IPANxpNeo::updateAwbStatType(unsigned int channel)
 
 int IPANxpNeo::processUguzzi(unsigned int channel)
 {
+	vpipe_settings_hw_t invalidIspSettings;
+	uguzzi_sensor_settings_t invalidSensorSettings;
+
 	/*
 	 * For the active channel, update uGuzzi structures with the static
 	 * buffers.
@@ -1162,6 +1165,18 @@ int IPANxpNeo::processUguzzi(unsigned int channel)
 		uint8_t nonActiveChannel = it.second;
 		sensorDataPkg_.channel[nonActiveChannel].valid = 0;
 		statsDataPkg_.channel[nonActiveChannel].valid = 0;
+		/*
+		 * Provide unused buffers to uGuzzi for the non active channels
+		 * since uGuzzi is still updating those buffers, such as the
+		 * update flag of the ISP settings and the sensor settings value.
+		 * This ensures to preserve the latest valid uGuzzi output for
+		 * these non active channels which can be retrieved from the
+		 * map of buffers.
+		 */
+		ispSettingsPkg_.isp_config[nonActiveChannel] =
+			&invalidIspSettings;
+		sensorSettingsPkg_.channel[nonActiveChannel] =
+			&invalidSensorSettings;
 	}
 
 	int err = uguzzi_process(&sensorDataPkg_, &statsDataPkg_,
