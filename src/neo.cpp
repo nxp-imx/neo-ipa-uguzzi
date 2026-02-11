@@ -694,6 +694,12 @@ int IPANxpNeo::getUguzziInitialSettings()
 {
 	int err = configUguzziAeMode();
 
+	for (const auto &[context, channel] : uguzziChannelMap_) {
+		/* Update uGuzzi structures with the static buffers. */
+		sensorSettingsPkg_.channel[channel] = &sensorSettings_[channel];
+		ispSettingsPkg_.isp_config[channel] = &ispSettings_[channel];
+	}
+
 	err |= uguzzi_process(NULL, NULL,
 			      &sensorSettingsPkg_, &ispSettingsPkg_);
 
@@ -790,7 +796,7 @@ void IPANxpNeo::prepareUguzziSensorData(uint32_t frame, unsigned int channel)
 	}
 
 	const imx9x_isp_cfg_prms_t *ispCfg =
-		&ispSettingsPkg_.isp_config[channel]->isp_cfg_params[0];
+		&ispSettings_[channel].isp_cfg_params[0];
 	uguzzi_awb_gains_t *sensorWbGains =
 		&sensorDataPkg_.channel[channel].wb.wb_gains;
 
@@ -1133,7 +1139,7 @@ void IPANxpNeo::updateAwbStatType(unsigned int channel)
 	 * stored to provide the proper AWB statistics.
 	 */
 	const imx9x_isp_cfg_prms_t *ispCfg =
-		&ispSettingsPkg_.isp_config[channel]->isp_cfg_params[0];
+		&ispSettings_[channel].isp_cfg_params[0];
 
 	if (ispCfg->update[CTEMP_CFG]) {
 		awbStatType_[channel] = static_cast<imx9x_isp_awb_stats_type_t>(
@@ -1143,6 +1149,13 @@ void IPANxpNeo::updateAwbStatType(unsigned int channel)
 
 int IPANxpNeo::processUguzzi(unsigned int channel)
 {
+	/*
+	 * For the active channel, update uGuzzi structures with the static
+	 * buffers.
+	 */
+	ispSettingsPkg_.isp_config[channel] = &ispSettings_[channel];
+	sensorSettingsPkg_.channel[channel] = &sensorSettings_[channel];
+
 	for (const auto &it : uguzziChannelMap_) {
 		if (channel == it.second)
 			continue;
@@ -1225,16 +1238,15 @@ void IPANxpNeo::setControls(unsigned int frame)
 	std::vector<Duration> exposures;
 	std::vector<double> gains;
 	for (const auto &[context, channel] : uguzziChannelMap_) {
-		uguzzi_sensor_settings_t *settings =
-			sensorSettingsPkg_.channel[channel];
+		uguzzi_sensor_settings_t &settings = sensorSettings_[channel];
 
-		uint32_t aGainQ16 = settings->exp_n.exp.again;
-		uint32_t dGainQ16 = settings->exp_n.exp.dgain;
+		uint32_t aGainQ16 = settings.exp_n.exp.again;
+		uint32_t dGainQ16 = settings.exp_n.exp.dgain;
 		uint64_t gainQ16 = static_cast<uint64_t>(
 			aGainQ16) * dGainQ16 / UQ16_1;
 		double gain = static_cast<double>(gainQ16) / UQ16_1;
 
-		Duration exposure = settings->exp_n.exp.exposure * 1.0us;
+		Duration exposure = settings.exp_n.exp.exposure * 1.0us;
 
 		exposures.push_back(exposure);
 		gains.push_back(gain);
@@ -1245,12 +1257,11 @@ void IPANxpNeo::setControls(unsigned int frame)
 
 	/* WB gains only apply to RGB stream. */
 	unsigned int channelRgb = uguzziChannelMap_.at(IPAContextTypeRgb);
-	uguzzi_sensor_settings_t *settingsRgb =
-		sensorSettingsPkg_.channel[channelRgb];
+	uguzzi_sensor_settings_t &settingsRgb = sensorSettings_[channelRgb];
 	if (wbLocation_[channelRgb] == UGUZZI_CAM_INFO_WB_LOCATION_SENSOR) {
 		/* WB in sensor */
 		std::array<double, 4> wbGains;
-		uguzzi_awb_gains_t &uguzziWbGains = settingsRgb->wb.wb_gains;
+		uguzzi_awb_gains_t &uguzziWbGains = settingsRgb.wb.wb_gains;
 		/* R, Gr, Gb, B */
 		wbGains[0] = static_cast<double>(uguzziWbGains.red) / UQ8_1;
 		wbGains[1] = static_cast<double>(uguzziWbGains.green) / UQ8_1;
@@ -1268,8 +1279,8 @@ void IPANxpNeo::setControls(unsigned int frame)
 		return;
 
 	/* For now, autofocus settings are used from the RGB context. */
-	if (!lensHwPosition_ || lensHwPosition_.value() != settingsRgb->lens_pos) {
-		lensHwPosition_ = settingsRgb->lens_pos;
+	if (!lensHwPosition_ || lensHwPosition_.value() != settingsRgb.lens_pos) {
+		lensHwPosition_ = settingsRgb.lens_pos;
 		ControlList lensControls(lensControls_);
 		ControlValue value(lensHwPosition_.value());
 		lensControls.set(V4L2_CID_FOCUS_ABSOLUTE, value);
@@ -1654,12 +1665,12 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 	NxpNeoParams params(context_.hw.apiVersion,
 			    buffers_.at(paramsBufferId).planes()[0]);
 
-	convertUguzziIspCfg2IspDrvCfg(
-		&ispSettingsPkg_.isp_config[channel]->isp_cfg_params[0],
-		sensorDataPkg_.channel[channel].l2vs_ratio,
-		&params);
-	overrideParams(&ispSettingsPkg_.isp_config[channel]->isp_cfg_params[0],
-		       &params);
+	imx9x_isp_cfg_prms_t &cfgParams =
+		ispSettings_[channel].isp_cfg_params[0];
+	convertUguzziIspCfg2IspDrvCfg(&cfgParams,
+				      sensorDataPkg_.channel[channel].l2vs_ratio,
+				      &params);
+	overrideParams(&cfgParams, &params);
 
 	paramsComputed.emit(frame, context, params.size());
 }
@@ -1713,7 +1724,7 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 		metadata.set(controls::Lux,
 			     static_cast<float>(ispSettingsPkg_.uguzzi_metadata[channelRGB].aec_info[22]));
 		metadata.set(controls::ColourTemperature,
-			     sensorSettingsPkg_.channel[channelRGB]->wb.colour_temp);
+			     sensorSettings_[channelRGB].wb.colour_temp);
 		/* add more as needed */
 	}
 	/* Set processed flag for this context. */
