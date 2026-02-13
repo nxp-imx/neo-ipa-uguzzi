@@ -1207,10 +1207,13 @@ void IPANxpNeo::processLiveControl(unsigned int channel, const NxpNeoStats *stat
 	if (buffers_.count(rawImage1BufferId_)) {
 		const MappedBuffer::Plane &rawBufferPlane =
 			buffers_.at(rawImage1BufferId_).planes()[0];
+		const ImageBufferType type =
+			context_.configuration.pipelineMode == IPAModeTypeRgbIrDual ?
+			IMAGE_BUFFER_DCG : IMAGE_BUFFER_VS;
 
-		imgBuffViewSetPkg_.channel[channel].view[IMAGE_BUFFER_VS].data =
+		imgBuffViewSetPkg_.channel[channel].view[type].data =
 			static_cast<const void *>(rawBufferPlane.data());
-		imgBuffViewSetPkg_.channel[channel].view[IMAGE_BUFFER_VS].size =
+		imgBuffViewSetPkg_.channel[channel].view[type].size =
 			static_cast<uint32_t>(rawBufferPlane.size_bytes());
 	}
 
