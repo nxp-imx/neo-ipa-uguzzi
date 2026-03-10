@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * Copyright 2024-2025 NXP
+ * Copyright 2024-2026 NXP
  * live_control.cpp - NXP NEO uGuzzi Live Control
  */
 
@@ -256,11 +256,7 @@ exit:
 	return ret;
 }
 
-int LiveControl::processTtCmd(const uguzzi_sensor_data_pkg_t *sensorDataPkg,
-			      const EmbeddedDataPkg *embeddedDataPkg,
-			      const ImageBufferViewSetPkg *imageBuffViewSetPkg,
-			      const IspStatisticsPkg *ispStatPkg,
-			      int timeoutMs)
+int LiveControl::pollForCmd(int timeoutMs)
 {
 	int ret = 0;
 	int readyFds;
@@ -285,19 +281,9 @@ int LiveControl::processTtCmd(const uguzzi_sensor_data_pkg_t *sensorDataPkg,
 				<< "Requested cam index " << (uint32_t)cam
 				<< " is bigger than active cameras count "
 				<< (uint32_t)activeCams;
-		} else if (cmdRcvCb_(&rcvHeader_,
-				     rcvPayload_.cmd_payload_uint8,
-				     rcvPayloadSz_)) {
-			LOG(NxpNeoUguzziLive, Error)
-				<< "Command receiving callback failed.";
-			ret = -EBADMSG;
-		} else {
-			liveCtrlCr_.get()->handleLiveControlCmdCr(
-				&sensorDataPkg->channel[cam],
-				&embeddedDataPkg->channel[cam],
-				&imageBuffViewSetPkg->channel[cam],
-				ispStatPkg->channel[cam]);
 		}
+		/* Set command to process for the requested channel */
+		cmdToProcess_[cam] = true;
 	}
 
 	return ret;
@@ -422,6 +408,7 @@ int LiveControl::handleCmd(const uguzzi_sensor_data_pkg_t *sensorDataPkg,
 			   const EmbeddedDataPkg *embeddedDataPkg,
 			   const ImageBufferViewSetPkg *imageBuffViewSetPkg,
 			   const IspStatisticsPkg *ispStatPkg,
+			   unsigned int activeChannel,
 			   int timeoutMs)
 {
 	int err = 0;
@@ -430,13 +417,39 @@ int LiveControl::handleCmd(const uguzzi_sensor_data_pkg_t *sensorDataPkg,
 		return -EINVAL;
 
 	if (clientFd_ == FD_INVALID)
-		err = waitForConnection(timeoutMs);
-	else
-		err = processTtCmd(sensorDataPkg,
-				   embeddedDataPkg,
-				   imageBuffViewSetPkg,
-				   ispStatPkg,
-				   timeoutMs);
+		return waitForConnection(timeoutMs);
+
+	/*
+	 * First process any pending command for the active channel
+	 * Then process any command received for the active channel
+	 */
+	do {
+		if (cmdToProcess_[activeChannel]) {
+			LOG(NxpNeoUguzziLive, Debug)
+				<< "Process command for channel" << activeChannel;
+
+			/* Process command for the active channel */
+			if (cmdRcvCb_(&rcvHeader_,
+				      rcvPayload_.cmd_payload_uint8,
+				      rcvPayloadSz_)) {
+				LOG(NxpNeoUguzziLive, Error)
+					<< "Command receiving callback failed.";
+				err = -EBADMSG;
+			} else {
+				liveCtrlCr_.get()->handleLiveControlCmdCr(
+					&sensorDataPkg->channel[activeChannel],
+					&embeddedDataPkg->channel[activeChannel],
+					&imageBuffViewSetPkg->channel[activeChannel],
+					ispStatPkg->channel[activeChannel]);
+				/* Reset command to process for the active channel */
+				cmdToProcess_[activeChannel] = false;
+			}
+		}
+
+		err = pollForCmd(timeoutMs);
+		if (err)
+			return err;
+	} while (cmdToProcess_[activeChannel]);
 
 	return err;
 }

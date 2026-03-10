@@ -1223,6 +1223,7 @@ void IPANxpNeo::processLiveControl(unsigned int channel, const NxpNeoStats *stat
 				     &embDataPkg_,
 				     &imgBuffViewSetPkg_,
 				     &ispStatPkg_,
+				     channel,
 				     LIVE_CONTROL_CMD_HANDLE_TIMEOUT_MS);
 	if (err)
 		LOG(NxpNeoUguzziIPA, Error)
