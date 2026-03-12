@@ -1420,8 +1420,8 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 		<< "Live Tuning/Control is not enabled at compile time!";
 #endif
 
-	/* Set the camera helper with sensor control values. */
-	camHelper_->setControls(&params.sensorControlList);
+	/* Update the camera helper with sensor control values. */
+	camHelper_->sensorControlList(&params.sensorControlList);
 
 	/* Set the IPA initialization state flag to enabled */
 	enabled_ = true;
