@@ -932,22 +932,6 @@ void IPANxpNeo::prepareUguzziAecHistograms(
 	uint32_t rgbirRoiWidth = rgbirStatCfg.background.width;
 	uint32_t rgbirRoiHeight = rgbirStatCfg.background.height;
 
-	uint32_t statRoiChannels = statCfg.hists[0].channel_selection;
-	uint32_t roiChannelsCnt = 0;
-	uint32_t sumHistLong = 0, sumHistShort = 0, sumHistVeryShort = 0;
-	uint32_t sumHistExpected;
-
-	bool histChannelsCorrect =
-		statCfg.hists[0].channel_selection != statCfg.hists[1].channel_selection ||
-		statCfg.hists[1].channel_selection != statCfg.hists[2].channel_selection ||
-		statCfg.hists[3].channel_selection != rgbirStatCfg.hists[0].channel_selection ||
-		rgbirStatCfg.hists[0].channel_selection != rgbirStatCfg.hists[1].channel_selection;
-	/* Check the channel configuration of the histograms. */
-	if (histChannelsCorrect)
-		/* Data corruption or misconfiguration. */
-		LOG(NxpNeoUguzziIPA, Warning)
-			<< "Mismatching histogram channel configuration";
-
 	bool mismatchingRois = false;
 	/* Check the ROI configuration of the histograms */
 	if (statRoiWidth != rgbirRoiWidth || statRoiHeight != rgbirRoiHeight) {
@@ -960,12 +944,6 @@ void IPANxpNeo::prepareUguzziAecHistograms(
 			<< "Discard RGBIR histograms and use duplicate STAT histograms";
 		mismatchingRois = true;
 	}
-
-	for (uint32_t i = 0; i < HIST_CHANNELS_CNT_MAX; i++)
-		roiChannelsCnt += ((statRoiChannels >> i) & 1U);
-
-	/* Accounting for RGBIR histograms */
-	roiChannelsCnt *= 2U;
 
 	const uint32_t *hist0;
 	const uint32_t *hist1;
@@ -996,40 +974,16 @@ void IPANxpNeo::prepareUguzziAecHistograms(
 		histData.Long[bin] = *(hist0 + bin) + *(hist3 + bin);
 		histData.Short[bin] = *(hist1 + bin) + *(hist4 + bin);
 		histData.VShort[bin] = *(hist2 + bin) + *(hist5 + bin);
-
-		sumHistLong += histData.Long[bin];
-		sumHistShort += histData.Short[bin];
-		sumHistVeryShort += histData.VShort[bin];
 	}
 
 	/*
-	 * NOTE: Assuming that the stats ROI's width and height do not exceed
-	 * the frame's width and height. (E.g for 1280x720 frame, the stats
-	 * ROI's size should be at most 1280x720. And if X or Y offset is
-	 * specified, the ROI's width and height will be decremented accordingly
-	 * to fit the frame's size.
+	 * Maximum combined channels used for each uGuzzi histograms.
+	 * Each uGuzzi histogram is a combination of 2 ISP histograms which
+	 * can be configured with up to 2 bayer channels.
 	 */
-	sumHistExpected = (statRoiWidth * statRoiHeight / HIST_CHANNELS_CNT_MAX) * roiChannelsCnt;
-	histData.sum = sumHistExpected;
-
-	if (sumHistLong != sumHistExpected) {
-		LOG(NxpNeoUguzziIPA, Warning)
-			<< "Mismatching Long histogram sum. "
-			<< "Expected: " << sumHistExpected
-			<< ", current: " << sumHistLong;
-	}
-	if (sumHistShort != sumHistExpected) {
-		LOG(NxpNeoUguzziIPA, Warning)
-			<< "Mismatching Short histogram sum. "
-			<< "Expected: " << sumHistExpected
-			<< ", current: " << sumHistShort;
-	}
-	if (sumHistVeryShort != sumHistExpected) {
-		LOG(NxpNeoUguzziIPA, Warning)
-			<< "Mismatching VShort histogram sum. "
-			<< "Expected: " << sumHistExpected
-			<< ", current: " << sumHistVeryShort;
-	}
+	const unsigned int maxUguzziHistChannels = 4;
+	histData.sum = (statRoiWidth * statRoiHeight / HIST_CHANNELS_CNT_MAX) *
+		       maxUguzziHistChannels;
 }
 
 void IPANxpNeo::prepareUguzziAwbStats(unsigned int channel,
