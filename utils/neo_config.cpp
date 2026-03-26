@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
  * neo-config.cpp - Configuration helpers for IPA
- * Copyright 2025 NXP
+ * Copyright 2025-2026 NXP
  */
 
 #include "neo_config.h"
@@ -69,6 +69,13 @@ int IPAFileConfig::load(const std::string &filename)
 	if (ret)
 		LOG(NxpNeoUguzziConfig, Warning)
 			<< "Invalid entity filter section in config file";
+
+	/* Parse the optional override-inalign section */
+	const YamlObject &overrideInAlign = (*root)["override-inalign"];
+	ret = parseOverrideInAlign(overrideInAlign);
+	if (ret)
+		LOG(NxpNeoUguzziConfig, Warning)
+			<< "Invalid override inalign section in config file";
 
 	return ret;
 }
@@ -159,13 +166,15 @@ int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
 		const YamlObject &dtpObj = profile["dtp-file"];
 		tuningInfo.dtpFile = dtpObj.get<std::string>().value_or("");
 
+		static const std::vector<uint32_t> tuningIdDefault =
+			{ kTuningIdRgb, kTuningIdIr };
 		const YamlObject &tuningIdObj = profile["tuning-id"];
 		tuningInfo.tuningId =
-			tuningIdObj.get<uint16_t>().value_or(kTuningId);
+			tuningIdObj.getList<uint32_t>().value_or(tuningIdDefault);
 
 		const YamlObject &tuningModeObj = profile["tuning-mode"];
 		tuningInfo.tuningMode =
-			tuningModeObj.get<uint16_t>().value_or(kTuningMode);
+			tuningModeObj.get<uint32_t>().value_or(kTuningMode);
 
 		tuningInfo.resolution = resolution.value();
 
@@ -186,6 +195,19 @@ int IPAFileConfig::parseEntityFilter(const YamlObject &entity)
 {
 	if (entity.isValue())
 		sensorFilter_ = entity.get<std::string>().value_or("");
+
+	return 0;
+}
+
+/**
+ * \brief Parse the override inalign section in the yaml configuration file
+ * \param[in] overrideInAlign The override inalign node in yaml file
+ * \return 0 if no error was detected, a negative error code otherwise
+ */
+int IPAFileConfig::parseOverrideInAlign(const YamlObject &overrideInAlign)
+{
+	if (overrideInAlign.isValue())
+		overrideInAlign_ = overrideInAlign.get<bool>().value_or(true);
 
 	return 0;
 }
@@ -235,6 +257,11 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 				});
 			if (iter_res != tuningInfos->end()) {
 				const TuningInfo *tuningInfo = &(*iter_res);
+				std::stringstream ssTuningId;
+				ssTuningId << "{";
+				for (auto id : tuningInfo->tuningId)
+					ssTuningId << " " << id;
+				ssTuningId << " }";
 				LOG(NxpNeoUguzziConfig, Debug)
 					<< "TuningInfo parsed for ["
 					<< entity << "; "
@@ -242,7 +269,7 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 					<< bitDepth << "bpp; mode:"
 					<< mode << "]: ["
 					<< tuningInfo->dtpFile << ", "
-					<< tuningInfo->tuningId << ", "
+					<< ssTuningId.str() << ", "
 					<< tuningInfo->tuningMode << "]";
 				return tuningInfo;
 			}

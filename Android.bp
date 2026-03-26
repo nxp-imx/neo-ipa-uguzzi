@@ -10,7 +10,7 @@ cc_library_shared {
     proprietary: true,
     relative_install_path: "ipa/ipa-nxp-neo-uguzzi",
     srcs: [
-	"dtp_utils/dtp.cpp",
+        "dtp_utils/dtp.cpp",
         "src/neo.cpp",
         "utils/isp_settings_converter.cpp",
         "utils/neo_config.cpp",

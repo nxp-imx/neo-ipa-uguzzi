@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
  * neo_config.h - Configuration helpers for IPA
- * Copyright 2025 NXP
+ * Copyright 2025-2026 NXP
  */
 
 #pragma once
@@ -24,8 +24,8 @@ struct TuningInfo {
 	unsigned int bitDepth;
 	IPAModeType mode;
 	std::string dtpFile;
-	unsigned int tuningId;
-	unsigned int tuningMode;
+	std::vector<uint32_t> tuningId;
+	uint32_t tuningMode;
 };
 
 using SensorMap = std::map<std::string, std::vector<TuningInfo>>;
@@ -45,21 +45,25 @@ public:
 	uint16_t socketPort(const std::string &model,
 			    const std::string &entity) const;
 	const std::optional<std::string> &sensorFilter() const { return sensorFilter_; }
+	bool overrideInAlign() const { return overrideInAlign_; }
 
 private:
 	static constexpr uint16_t kSocketPort = 50000;
 	static constexpr unsigned int kBitDepth = 16;
 	static constexpr IPAModeType kMode = IPAModeTypeStandard;
-	static constexpr unsigned int kTuningId = 2010;
-	static constexpr unsigned int kTuningMode = 0;
+	static constexpr uint32_t kTuningIdRgb = 2010;
+	static constexpr uint32_t kTuningIdIr = 2011;
+	static constexpr uint32_t kTuningMode = 0;
 
 	int parseSensors(const YamlObject &sensors);
 	int parseSensorProfiles(const YamlObject &profiles,
 				const std::string &sensor);
 	int parseEntityFilter(const YamlObject &entity);
+	int parseOverrideInAlign(const YamlObject &overrideInAlign);
 
 	SensorMap sensorMap_;
 	std::optional<std::string> sensorFilter_;
+	bool overrideInAlign_ = true;
 	SocketMap socketMap_;
 	/* Map between the sensor stream mode name and its associated IPA enum value. */
 	static const std::map<std::string, IPAModeType> kIPAModeNameMap;
