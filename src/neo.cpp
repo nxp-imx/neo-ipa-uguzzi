@@ -1358,7 +1358,6 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 	}
 
 	sensorConfig->embeddedTopLines = attributes->mdParams.topLines;
-	sensorConfig->rgbIr = attributes->rgbIr;
 
 #ifdef USE_LIVE_CONTROL
 	LiveControl &liveCtrl = LiveControl::getInstance();

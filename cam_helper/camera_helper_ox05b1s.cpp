@@ -3,7 +3,7 @@
  * camera_helper_ox05b1s.c
  * Helper class that performs sensor-specific parameter computations
  * for Omnivision ox05b1s sensor
- * Copyright 2025-2026 NXP
+ * Copyright 2024-2026 NXP
  */
 
 #include <cmath>
@@ -33,8 +33,6 @@ class CameraHelperOx05b1s : public CameraHelper
 public:
 	CameraHelperOx05b1s()
 	{
-		attributes_.rgbIr = true;
-
 		/* gainType_ / gainConstants_ are unused */
 
 		/* Adapt the default delayedControls for the ox05b1s custom controls */
