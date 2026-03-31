@@ -85,8 +85,8 @@ namespace ipa::nxpneo {
 atomic_flag gblIpaInitialized = ATOMIC_FLAG_INIT;
 
 struct IPAHwSettings {
-	uint32_t apiVersion;
 	uint32_t hwCapabilities;
+	uint64_t supportedParamsBlocks;
 	bool lensPresent;
 };
 
@@ -1299,7 +1299,7 @@ int IPANxpNeo::init(const IPASettings &settings, const InitParams &params,
 {
 	sensorModel_ = settings.sensorModel;
 	sensorEntity_ = params.sensorEntity;
-	context_.hw.apiVersion = params.apiVersion;
+	context_.hw.supportedParamsBlocks = params.supportedParamsBlocks;
 	context_.hw.hwCapabilities = params.hwCapabilities;
 	context_.hw.lensPresent = params.lensPresent;
 
@@ -1641,17 +1641,16 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPACameraContext conte
 			<< " not mapped for frame " << frame;
 		return;
 	}
-	NxpNeoParams params(context_.hw.apiVersion,
-			    buffers_.at(paramsBufferId).planes()[0]);
 
 	imx9x_isp_cfg_prms_t &cfgParams =
 		ispSettings_[channel].isp_cfg_params[0];
+	NxpNeoParams params(buffers_.at(paramsBufferId).planes()[0]);
 	convertUguzziIspCfg2IspDrvCfg(&cfgParams,
 				      sensorDataPkg_.channel[channel].l2vs_ratio,
 				      &params);
 	overrideParams(&cfgParams, &params);
 
-	paramsComputed.emit(frame, context, params.size());
+	paramsComputed.emit(frame, context, params.bytesused());
 }
 
 void IPANxpNeo::processStats(const uint32_t frame, const IPACameraContext context,
@@ -1667,9 +1666,6 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPACameraContext contex
 			<< " not mapped for frame " << frame;
 		return;
 	}
-
-	const NxpNeoStats stats(context_.hw.apiVersion,
-				buffers_.at(statsBufferId).planes()[0]);
 
 	ControlList &controls = mdControls_;
 
@@ -1691,6 +1687,7 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPACameraContext contex
 
 	prepareUguzziSensorData(frame, channel);
 
+	const NxpNeoStats stats(buffers_.at(statsBufferId).planes()[0]);
 	prepareUguzziStats(channel, &stats);
 
 	int err = processUguzzi(channel);
