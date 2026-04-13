@@ -186,11 +186,11 @@ private:
 	int processUguzzi(unsigned int channel);
 
 	void setInitialControls();
-	void setControls(unsigned int frame);
+	void setControls(uint32_t frame);
 	bool libcameraCfa2UguzziBayerPattern(uint32_t cfa,
 					     uguzzi_cam_info_cfa_t *pattern);
 	std::string controlListToString(const ControlList *ctrls) const;
-	std::string logSensorParams(const unsigned int frame,
+	std::string logSensorParams(const uint32_t frame,
 				    const ControlList *ctrlsApplied,
 				    const ControlList *ctrlsToApply) const;
 
@@ -1193,7 +1193,7 @@ void IPANxpNeo::setInitialControls()
 	setControls(0);
 }
 
-void IPANxpNeo::setControls(unsigned int frame)
+void IPANxpNeo::setControls(uint32_t frame)
 {
 	/*
 	 * Send controls if:
@@ -1633,7 +1633,12 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 	auto paramsIter = bufferIds.find(IPABufferTypeParams);
 	unsigned int paramsBufferId =
 		paramsIter != bufferIds.end() ? paramsIter->second : 0;
-	ASSERT(buffers_.count(paramsBufferId));
+	if (!mappedBuffers_.count(paramsBufferId)) {
+		LOG(NxpNeoIPA, Error)
+			<< "Parameters buffer " << paramsBufferId
+			<< " not mapped for frame " << frame;
+		return;
+	}
 	NxpNeoParams params(context_.hw.apiVersion,
 			    buffers_.at(paramsBufferId).planes()[0]);
 
@@ -1654,7 +1659,12 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 	auto statsIter = bufferIds.find(IPABufferTypeStats);
 	unsigned int statsBufferId =
 		statsIter != bufferIds.end() ? statsIter->second : 0;
-	ASSERT(buffers_.count(statsBufferId));
+	if (!mappedBuffers_.count(statsBufferId)) {
+		LOG(NxpNeoIPA, Error)
+			<< "Statistics buffer " << statsBufferId
+			<< " not mapped for frame " << frame;
+		return;
+	}
 
 	const NxpNeoStats stats(context_.hw.apiVersion,
 				buffers_.at(statsBufferId).planes()[0]);
@@ -1945,7 +1955,7 @@ std::string IPANxpNeo::controlListToString(const ControlList *ctrls) const
 	return log.str();
 }
 
-std::string IPANxpNeo::logSensorParams(const unsigned int frame,
+std::string IPANxpNeo::logSensorParams(const uint32_t frame,
 				       const ControlList *ctrlsApplied,
 				       const ControlList *ctrlsToApply) const
 {
