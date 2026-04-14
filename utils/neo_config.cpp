@@ -14,11 +14,11 @@ namespace libcamera::ipa::nxpneo {
 
 LOG_DEFINE_CATEGORY(NxpNeoUguzziConfig)
 
-const std::map<std::string, IPAModeType> IPAFileConfig::kIPAModeNameMap = {
-	{ "standard", IPAModeTypeStandard },
-	{ "hdr", IPAModeTypeHdrMerge },
-	{ "rgbIr", IPAModeTypeRgbIr },
-	{ "rgbIrDual", IPAModeTypeRgbIrDual },
+const std::map<std::string, IPAPipelineMode> IPAFileConfig::kPipelineModeNameMap = {
+	{ "standard", IPAPipelineMode::Standard },
+	{ "hdr", IPAPipelineMode::HdrMerge },
+	{ "rgbIr", IPAPipelineMode::RgbIr },
+	{ "rgbIrDual", IPAPipelineMode::RgbIrDual },
 };
 
 /**
@@ -161,8 +161,15 @@ int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
 
 		const YamlObject &modeObj = profile["mode"];
 		const std::string modeName = modeObj.get<std::string>().value_or("");
-		auto iter = kIPAModeNameMap.find(modeName);
-		tuningInfo.mode = (iter != kIPAModeNameMap.end()) ? iter->second : kMode;
+		auto iter = kPipelineModeNameMap.find(modeName);
+		if (iter != kPipelineModeNameMap.end()) {
+			tuningInfo.mode = iter->second;
+		} else {
+			LOG(NxpNeoUguzziConfig, Warning)
+				<< "No pipeline mode found or valid for "
+				<< sensor << ": use standard mode by default.";
+			tuningInfo.mode = IPAPipelineMode::Standard;
+		}
 
 		const YamlObject &dtpObj = profile["dtp-file"];
 		tuningInfo.dtpFile = dtpObj.get<std::string>().value_or("");
@@ -222,7 +229,7 @@ int IPAFileConfig::parseOverrideInAlign(const YamlObject &overrideInAlign)
  * \param[in] entity The name of the camera media device entity
  * \param[in] resolution The resolution of the camera stream
  * \param[in] bitDepth The bits per pixel of the camera stream
- * \param[in] mode The sensor stream mode
+ * \param[in] mode The pipeline mode type
  *
  * The tuningInfo structure contains information related to the tuning
  * of the sensor.
@@ -233,7 +240,7 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 					    const std::string &entity,
 					    Size resolution,
 					    unsigned int bitDepth,
-					    IPAModeType mode) const
+					    IPAPipelineMode mode) const
 {
 	/*
 	 * For the tuning info search, give priority to entity-based match over
@@ -268,7 +275,7 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 					<< entity << "; "
 					<< resolution << "; "
 					<< bitDepth << "bpp; mode:"
-					<< mode << "]: ["
+					<< static_cast<int>(mode) << "]: ["
 					<< tuningInfo->dtpFile << ", "
 					<< ssTuningId.str() << ", "
 					<< tuningInfo->tuningMode << "]";
@@ -278,8 +285,9 @@ const TuningInfo *IPAFileConfig::tuningInfo(const std::string &model,
 	}
 	LOG(NxpNeoUguzziConfig, Error) << "No tuning Info found for ["
 				       << entity << "; "
-				       << resolution << "; " << bitDepth << "bpp; mode:"
-				       << mode << "]";
+				       << resolution << "; " << bitDepth
+				       << "bpp; mode:"
+				       << static_cast<int>(mode) << "]";
 	return nullptr;
 }
 

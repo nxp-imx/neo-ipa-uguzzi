@@ -97,13 +97,13 @@ struct IPASessionConfiguration {
 		std::array<uint32_t, 2> bpps;
 	} sensor;
 
-	std::vector<IPAContextType> activeContexts;
-	IPAModeType pipelineMode;
+	std::vector<IPACameraContext> activeContexts;
+	IPAPipelineMode pipelineMode;
 };
 
 
 struct IPAFrameContext {
-	std::map<IPAContextType, bool> processed;
+	std::map<IPACameraContext, bool> processed;
 };
 
 struct IPAContext {
@@ -124,18 +124,18 @@ public:
 	void stop() override;
 
 	int configure(const IPAConfigInfo &ipaConfig,
-		      const std::map<uint32_t, IPAStream> &streamConfig,
+		      const std::map<IPAStreamType, IPAStream> &streamConfig,
 		      ControlInfoMap *ipaControls) override;
 	void mapBuffers(const std::vector<IPABuffer> &buffers) override;
 	void unmapBuffers(const std::vector<unsigned int> &ids) override;
 
 	void queueRequest(const uint32_t frame,
 			  const ControlList &controls) override;
-	void computeParams(const uint32_t frame, const IPAContextType context,
-			   const std::map<uint32_t,
+	void computeParams(const uint32_t frame, const IPACameraContext context,
+			   const std::map<IPABufferType,
 			   uint32_t> &bufferIds) override;
-	void processStats(const uint32_t frame, const IPAContextType context,
-			  const std::map<uint32_t, uint32_t> &bufferIds,
+	void processStats(const uint32_t frame, const IPACameraContext context,
+			  const std::map<IPABufferType, uint32_t> &bufferIds,
 			  const ControlList &sensorControls) override;
 
 private:
@@ -146,16 +146,17 @@ private:
 	int initializeUguzzi(Size outputSize);
 	void deinitUguzzi();
 	void initUguzziProcessData();
-	int configureUguzzi(const std::map<uint32_t, IPAStream> &streamConfig);
+	int configureUguzzi(
+		const std::map<IPAStreamType, IPAStream> &streamConfig);
 	void setSessionConfiguration(const IPAConfigInfo &ipaConfig);
 	int verifySensorToInit();
 	int getDTPConfig();
 	int checkDTPConfig(const IPACameraSensorInfo &sensorInfo);
 	int setUguzziInitialConfig();
 	int setUguzziStreamConfig(
-		const std::map<uint32_t, IPAStream> &streamConfig);
+		const std::map<IPAStreamType, IPAStream> &streamConfig);
 	int configUguzziAeMode();
-	uint32_t getTuningId(IPAContextType context);
+	uint32_t getTuningId(IPACameraContext context);
 	int getUguzziInitialSettings();
 	int getCamInfoFromDTP();
 	int getWbLocationFromDTP();
@@ -290,26 +291,26 @@ private:
 	std::string dataDir_;
 
 	/* Map between the pipeline context and the uGuzzi channel. */
-	std::map<const IPAContextType, unsigned int> uguzziChannelMap_;
+	std::map<const IPACameraContext, unsigned int> uguzziChannelMap_;
 };
 
 namespace {
 
-/* Map between the IPA stream mode and the cameraHelper stream mode. */
-const std::map<const IPAModeType, SensorStreamModes> kSensorStreamModeMap = {
-	{ IPAModeTypeStandard, SensorStreamStandard },
-	{ IPAModeTypeHdrMerge, SensorStreamHdr },
-	{ IPAModeTypeRgbIr, SensorStreamRgbIr },
-	{ IPAModeTypeRgbIrDual, SensorStreamDualContext },
+/* Map between the pipeline mode and the cameraHelper stream mode. */
+const std::map<const IPAPipelineMode, SensorStreamModes> kSensorStreamModeMap = {
+	{ IPAPipelineMode::Standard, SensorStreamStandard },
+	{ IPAPipelineMode::HdrMerge, SensorStreamHdr },
+	{ IPAPipelineMode::RgbIr, SensorStreamRgbIr },
+	{ IPAPipelineMode::RgbIrDual, SensorStreamDualContext },
 };
 
 /*
  * For RgbIr dual mode, the tuningId vector is stored as
  * { tuningIdRgb, tuningIdIr }
  */
-const std::map<const IPAContextType, unsigned int> kTuningIdRgbIrMap = {
-	{ IPAContextTypeRgb, 0 },
-	{ IPAContextTypeIr, 1 },
+const std::map<const IPACameraContext, unsigned int> kTuningIdRgbIrMap = {
+	{ IPACameraContext::Rgb, 0 },
+	{ IPACameraContext::Ir, 1 },
 };
 
 /* List of controls handled by the NeoNxp IPA */
@@ -414,7 +415,8 @@ void IPANxpNeo::initUguzziProcessData()
 	}
 }
 
-int IPANxpNeo::configureUguzzi(const std::map<uint32_t, IPAStream> &streamConfig)
+int IPANxpNeo::configureUguzzi(
+	const std::map<IPAStreamType, IPAStream> &streamConfig)
 {
 	int ret = 0;
 
@@ -445,9 +447,9 @@ void IPANxpNeo::setSessionConfiguration(const IPAConfigInfo &ipaConfig)
 
 	/* Initialize active RGB/Ir contexts. */
 	context_.configuration.activeContexts =
-		context_.configuration.pipelineMode == IPAModeTypeRgbIrDual ?
-		std::vector<IPAContextType> { IPAContextTypeRgb, IPAContextTypeIr } :
-		std::vector<IPAContextType> { IPAContextTypeRgb };
+		context_.configuration.pipelineMode == IPAPipelineMode::RgbIrDual ?
+		std::vector<IPACameraContext> { IPACameraContext::Rgb, IPACameraContext::Ir } :
+		std::vector<IPACameraContext> { IPACameraContext::Rgb };
 }
 
 /**
@@ -601,7 +603,7 @@ int IPANxpNeo::setUguzziInitialConfig()
 }
 
 int IPANxpNeo::setUguzziStreamConfig(
-	const std::map<uint32_t, IPAStream> &streamConfig)
+	const std::map<IPAStreamType, IPAStream> &streamConfig)
 {
 	/**
 	 * Switch tuning based on the color format of the main ISP output stream.
@@ -622,7 +624,7 @@ int IPANxpNeo::setUguzziStreamConfig(
 
 	/* This is performed only for RGB context. */
 	uguzzi_configuration_t cfg{};
-	cfg.channel_id = uguzziChannelMap_.at(IPAContextTypeRgb);
+	cfg.channel_id = uguzziChannelMap_.at(IPACameraContext::Rgb);
 	cfg.config_id = CMD_SCENE_MODE;
 	cfg.config_val = rgbFormat ? 0 : 1;
 	int cfgError = uguzzi_config(&cfg);
@@ -663,18 +665,18 @@ int IPANxpNeo::configUguzziAeMode()
 }
 
 /**
- * \brief Get tuning id based on the IPA context type
+ * \brief Get tuning id based on the camera context type
  *
  * For RgbIr dual mode, the index used to store the tuningId is retrieved
- * with kTuningIdRgbIrMap mapping the index with the IPA context type.
+ * with kTuningIdRgbIrMap mapping the index with the camera context type.
  * For other pipeline mode, this index is 0.
  *
- * \param[in] context The IPA context type
+ * \param[in] context The camera context type (RGB or Ir)
  */
-uint32_t IPANxpNeo::getTuningId(IPAContextType context)
+uint32_t IPANxpNeo::getTuningId(IPACameraContext context)
 {
 	uint8_t index = 0;
-	if (context_.configuration.pipelineMode == IPAModeTypeRgbIrDual)
+	if (context_.configuration.pipelineMode == IPAPipelineMode::RgbIrDual)
 		index = kTuningIdRgbIrMap.at(context);
 
 	return tuningInfo_->tuningId[index];
@@ -1163,7 +1165,7 @@ void IPANxpNeo::processLiveControl(unsigned int channel, const NxpNeoStats *stat
 		const MappedBuffer::Plane &rawBufferPlane =
 			buffers_.at(rawImage1BufferId_).planes()[0];
 		const ImageBufferType type =
-			context_.configuration.pipelineMode == IPAModeTypeRgbIrDual ?
+			context_.configuration.pipelineMode == IPAPipelineMode::RgbIrDual ?
 			IMAGE_BUFFER_DCG : IMAGE_BUFFER_VS;
 
 		imgBuffViewSetPkg_.channel[channel].view[type].data =
@@ -1230,7 +1232,7 @@ void IPANxpNeo::setControls(uint32_t frame)
 				      Span<double>(gains));
 
 	/* WB gains only apply to RGB stream. */
-	unsigned int channelRgb = uguzziChannelMap_.at(IPAContextTypeRgb);
+	unsigned int channelRgb = uguzziChannelMap_.at(IPACameraContext::Rgb);
 	uguzzi_sensor_settings_t &settingsRgb = sensorSettings_[channelRgb];
 	if (wbLocation_[channelRgb] == UGUZZI_CAM_INFO_WB_LOCATION_SENSOR) {
 		/* WB in sensor */
@@ -1400,7 +1402,7 @@ void IPANxpNeo::stop()
 }
 
 int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
-			 const std::map<uint32_t, IPAStream> &streamConfig,
+			 const std::map<IPAStreamType, IPAStream> &streamConfig,
 			 ControlInfoMap *ipaControls)
 {
 	int ret = 0;
@@ -1426,10 +1428,10 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 
 	setSessionConfiguration(ipaConfig);
 
-	/* Assign the uguzzi channel with the context type. */
-	uguzziChannelMap_[IPAContextTypeRgb] = 0;
-	if (ipaConfig.mode == IPAModeTypeRgbIrDual)
-		uguzziChannelMap_[IPAContextTypeIr] = 1;
+	/* Assign the uguzzi channel with the camera context type. */
+	uguzziChannelMap_[IPACameraContext::Rgb] = 0;
+	if (ipaConfig.mode == IPAPipelineMode::RgbIrDual)
+		uguzziChannelMap_[IPACameraContext::Ir] = 1;
 
 	/* Get the tuning info according to the sensor entity and resolution */
 	tuningInfo_ = config_.tuningInfo(sensorModel_, sensorEntity_,
@@ -1443,7 +1445,8 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 					      << sensorInfo->outputSize << "; "
 					      << sensorInfo->bitsPerPixel
 					      << "bpp; mode:"
-					      << ipaConfig.mode << "]";
+					      << static_cast<int>(ipaConfig.mode)
+					      << "]";
 		return -EINVAL;
 	}
 
@@ -1526,7 +1529,7 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 		cameraMode.streamMode = SensorStreamStandard;
 		LOG(NxpNeoUguzziIPA, Warning)
 			<< "No sensor stream mode found for pipeline mode: "
-			<< ipaConfig.mode
+			<< static_cast<int>(ipaConfig.mode)
 			<< " - Default mode is used: " << cameraMode.streamMode;
 	}
 	camHelper_->setCameraMode(cameraMode);
@@ -1576,8 +1579,8 @@ void IPANxpNeo::queueRequest(const uint32_t frame, const ControlList &controls)
 		context_.frameContext.processed[ctxt] = false;
 }
 
-void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context,
-			      const std::map<uint32_t, uint32_t> &bufferIds)
+void IPANxpNeo::computeParams(const uint32_t frame, const IPACameraContext context,
+			      const std::map<IPABufferType, uint32_t> &bufferIds)
 {
 	ControlList &controls = mdControls_;
 	controls = ControlList(md::controlIdMap);
@@ -1591,16 +1594,16 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 	metaDataValid_ = false;
 
 	/* Give access to raw buffers for live tuning */
-	auto input0It = bufferIds.find(IPABufferTypeImage0);
+	auto input0It = bufferIds.find(IPABufferType::Image0);
 	rawImage0BufferId_ = input0It != bufferIds.end() ? input0It->second : 0;
-	auto input1It = bufferIds.find(IPABufferTypeImage1);
+	auto input1It = bufferIds.find(IPABufferType::Image1);
 	rawImage1BufferId_ = input1It != bufferIds.end() ? input1It->second : 0;
 
 	/*
 	 * Look for metadata availability, either from the camera embedded data
 	 * stream or from the pixel data top lines.
 	 */
-	auto eDataIt = bufferIds.find(IPABufferTypeEData);
+	auto eDataIt = bufferIds.find(IPABufferType::EData);
 	unsigned int eDataBufferId =
 		eDataIt != bufferIds.end() ? eDataIt->second : 0;
 	if (eDataBufferId && buffers_.count(eDataBufferId)) {
@@ -1631,7 +1634,7 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 			metaDataValid_ = true;
 	}
 
-	auto paramsIter = bufferIds.find(IPABufferTypeParams);
+	auto paramsIter = bufferIds.find(IPABufferType::Params);
 	unsigned int paramsBufferId =
 		paramsIter != bufferIds.end() ? paramsIter->second : 0;
 	if (!buffers_.count(paramsBufferId)) {
@@ -1653,11 +1656,11 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 	paramsComputed.emit(frame, context, params.size());
 }
 
-void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
-			     const std::map<uint32_t, uint32_t> &bufferIds,
+void IPANxpNeo::processStats(const uint32_t frame, const IPACameraContext context,
+			     const std::map<IPABufferType, uint32_t> &bufferIds,
 			     const ControlList &sensorControls)
 {
-	auto statsIter = bufferIds.find(IPABufferTypeStats);
+	auto statsIter = bufferIds.find(IPABufferType::Stats);
 	unsigned int statsBufferId =
 		statsIter != bufferIds.end() ? statsIter->second : 0;
 	if (!buffers_.count(statsBufferId)) {
@@ -1698,7 +1701,7 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 			<< "Failed to process ISP statistics";
 
 	ControlList metadata(controls::controls);
-	if (context == IPAContextTypeRgb) {
+	if (context == IPACameraContext::Rgb) {
 		/*
 		 * Metadata are only filled in RGB context.
 		 * This is to avoid overwritten the same control in Ir context.
