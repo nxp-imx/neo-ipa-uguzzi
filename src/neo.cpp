@@ -1633,8 +1633,8 @@ void IPANxpNeo::computeParams(const uint32_t frame, const IPAContextType context
 	auto paramsIter = bufferIds.find(IPABufferTypeParams);
 	unsigned int paramsBufferId =
 		paramsIter != bufferIds.end() ? paramsIter->second : 0;
-	if (!mappedBuffers_.count(paramsBufferId)) {
-		LOG(NxpNeoIPA, Error)
+	if (!buffers_.count(paramsBufferId)) {
+		LOG(NxpNeoUguzziIPA, Error)
 			<< "Parameters buffer " << paramsBufferId
 			<< " not mapped for frame " << frame;
 		return;
@@ -1659,8 +1659,8 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPAContextType context,
 	auto statsIter = bufferIds.find(IPABufferTypeStats);
 	unsigned int statsBufferId =
 		statsIter != bufferIds.end() ? statsIter->second : 0;
-	if (!mappedBuffers_.count(statsBufferId)) {
-		LOG(NxpNeoIPA, Error)
+	if (!buffers_.count(statsBufferId)) {
+		LOG(NxpNeoUguzziIPA, Error)
 			<< "Statistics buffer " << statsBufferId
 			<< " not mapped for frame " << frame;
 		return;
