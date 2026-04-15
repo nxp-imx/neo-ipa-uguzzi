@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * isp_settings_converter.cpp
- * Conversion between the uGuzzi structures and the NXP NEOISP UAPI
+ * Copyright 2024-2026 NXP
  *
- * Copyright 2024-2025 NXP
+ * Conversion between the uGuzzi structures and the NXP NEOISP UAPI
  */
 
 #include "isp_settings_converter.h"

@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * neo-config.cpp - Configuration helpers for IPA
  * Copyright 2025-2026 NXP
+ *
+ * Configuration helpers for IPA
  */
 
 #include "neo_config.h"

@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
  * Copyright 2024-2026 NXP
- * live_control.h - NXP NEO uGuzzi Live Control
+ *
+ * NXP NEO uGuzzi Live Control
  */
 
 #pragma once

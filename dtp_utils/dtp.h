@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * Copyright (C) 2021, Google Inc.
- * Copyright (C) 2024, NXP
+ * Copyright (C) 2024-2026 NXP
  *
- * dtp.h - Calibration Binary Data Wrapper
+ * Calibration Binary Data Wrapper
+ *
+ * Copyright (C) 2021, Google Inc.
  *
  * This is derived work of the BinaryData class implementation from
  * libcamera IPU3 project hosted on:
  * https://git.libcamera.org/libcamera/ipu3-ipa.git/
- *
  */
 
 #include <stdint.h>

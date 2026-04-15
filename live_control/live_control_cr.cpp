@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * Copyright 2024 NXP
- * live_control_cr.cpp - NXP NEO uGuzzi Live Control Custom Region
+ * Copyright 2024-2026 NXP
+ *
+ * NXP NEO uGuzzi Live Control Custom Region
  */
 
 #include "live_control_cr.h"

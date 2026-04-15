@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * run_tests.h - NXP NEO uGuzzi IPA tests
- * Copyright 2024 NXP
+ * Copyright 2024-2026 NXP
+ *
+ * NXP NEO uGuzzi IPA tests
  */
 
 #include <stdint.h>
