@@ -297,11 +297,11 @@ private:
 namespace {
 
 /* Map between the pipeline mode and the cameraHelper stream mode. */
-const std::map<const IPAPipelineMode, SensorStreamModes> kSensorStreamModeMap = {
-	{ IPAPipelineMode::Standard, SensorStreamStandard },
-	{ IPAPipelineMode::HdrMerge, SensorStreamHdr },
-	{ IPAPipelineMode::RgbIr, SensorStreamRgbIr },
-	{ IPAPipelineMode::RgbIrDual, SensorStreamDualContext },
+const std::map<const IPAPipelineMode, SensorStreamMode> kSensorStreamModeMap = {
+	{ IPAPipelineMode::Standard, SensorStreamMode::Standard },
+	{ IPAPipelineMode::HdrMerge, SensorStreamMode::Hdr },
+	{ IPAPipelineMode::RgbIr, SensorStreamMode::RgbIr },
+	{ IPAPipelineMode::RgbIrDual, SensorStreamMode::DualContext },
 };
 
 /*
@@ -1526,11 +1526,9 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 	if (iter != kSensorStreamModeMap.end()) {
 		cameraMode.streamMode = iter->second;
 	} else {
-		cameraMode.streamMode = SensorStreamStandard;
+		cameraMode.streamMode = SensorStreamMode::Standard;
 		LOG(NxpNeoUguzziIPA, Warning)
-			<< "No sensor stream mode found for pipeline mode: "
-			<< static_cast<int>(ipaConfig.mode)
-			<< " - Default mode is used: " << cameraMode.streamMode;
+			<< "No sensor stream mode supported: fallback to standard mode.";
 	}
 	camHelper_->setCameraMode(cameraMode);
 

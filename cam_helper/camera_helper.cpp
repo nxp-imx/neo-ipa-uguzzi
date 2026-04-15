@@ -5,7 +5,7 @@
  * Helper class that performs sensor-specific parameter computations
  *
  * Based on Helper class that performs sensor-specific parameter computations
- *     src/ipa/libipa/camera_sensor_helper.c
+ *     src/ipa/libipa/camera_sensor_helper.cpp
  * Copyright (C) 2021, Google Inc.
  */
 #include "camera_helper.h"
@@ -203,7 +203,7 @@ void CameraHelper::setCameraMode(const CameraMode &mode)
 		<< " Bit depth " << mode_.bitdepth
 		<< " Width " << mode_.width
 		<< " Height " << mode_.height
-		<< " StreamMode " << mode_.streamMode;
+		<< " StreamMode " << static_cast<int>(mode_.streamMode);
 }
 
 /**
