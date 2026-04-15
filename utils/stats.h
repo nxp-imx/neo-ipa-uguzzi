@@ -66,7 +66,7 @@ class NxpNeoStats;
 class NxpNeoStatsBlockBase
 {
 public:
-	NxpNeoStatsBlockBase(NxpNeoStats *stats, BlockStatsType type,
+	NxpNeoStatsBlockBase(NxpNeoStats *stats,
 			     const Span<uint8_t> &data);
 
 	Span<uint8_t> data() const { return data_; }
@@ -75,8 +75,6 @@ private:
 	LIBCAMERA_DISABLE_COPY(NxpNeoStatsBlockBase)
 
 	NxpNeoStats *stats_;
-	BlockStatsType type_;
-	Span<uint8_t> header_;
 	Span<uint8_t> data_;
 };
 
@@ -87,7 +85,7 @@ public:
 	using Type = typename details::block_stats_type<S>::type;
 
 	NxpNeoStatsBlock(NxpNeoStats *stats, const Span<uint8_t> &data)
-		: NxpNeoStatsBlockBase(stats, S, data)
+		: NxpNeoStatsBlockBase(stats, data)
 	{
 	}
 
