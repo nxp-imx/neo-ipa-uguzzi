@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * uguzzi_log.cpp - Uguzzi external log function definition
- * Copyright 2024-2025 NXP
+ * Copyright 2024-2026 NXP
+ *
+ * Uguzzi external log function definition
  */
 
 #include <stdarg.h>

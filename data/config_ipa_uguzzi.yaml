@@ -5,9 +5,9 @@
 # This file provides configuration for the IPA, such as specific configuration
 # for each connected sensor and also for the tuning tool.
 #
-# All the sensors used by the application should be part of the sensors sequence
-# defined in this configuration file and should be identified by either
-# its model or its entity name.
+# All the sensors used by the application should be part of the sensors
+# sequence defined in this configuration file and should be identified by
+# either its model or its entity name.
 # If a sensor configuration is defined for both its model and its entity name,
 # then the definition relevant to the entity takes precedence.
 #
@@ -22,25 +22,38 @@
 #                     optional if entity is defined
 #   entity          = sensor entity name
 #                     optional, if model is defined
-#   socket-port     = socket port used to connect to this sensor - default: 50000
+#   socket-port     = socket port used to connect to this sensor
+#                     default: 50000
 #   profiles        = sequence of profile-entry
-#   profile-entry   = mapping of {resolution, bit-depth, dtp-file, tuning-id, tuning-mode}
-#     resolution    = resolution configured for the sensor - default: none
-#     bit-depth     = bit depth configured for the sensor - default: 16
-#     mode          = stream mode configured for the sensor - default: standard mode
-#     dtp-file      = DTP file name to use for {sensor, resolution, bit depth, mode} - default: none
-#     tuning-id     = tuning ID to use for {sensor, resolution, bit depth, mode} - default: 2010
+#   profile-entry   = mapping of {resolution, bit-depth, dtp-file, tuning-id,
+#                     tuning-mode}
+#     resolution    = resolution configured for the sensor
+#                     default: none
+#     bit-depth     = bit depth configured for the sensor
+#                     default: 16
+#     mode          = stream mode configured for the sensor
+#                     mode values belong to [standard, hdr, rgbIr, rgbIrDual]
+#                     default is [standard]
+#     dtp-file      = DTP file name to use for {sensor, resolution, bit depth,
+#                     mode}
+#                     default: none
+#     tuning-id     = list of tuning IDs to use for
+#                     {sensor, resolution, bit depth, mode}
+#                     values are assigned as { rgbId, IrId }
+#                     default: { 2010, 2011 }
 #                     (referred as sensor module in TT user guide)
-#     tuning-mode   = tuning mode to use for {sensor, resolution, bit depth, mode} - default: 0
+#     tuning-mode   = tuning mode to use for {sensor, resolution, bit depth,
+#                     mode}
+#                     default: 0
 #                     (referred as camera mode in TT user guide)
 #
 # entity-filter     = sensor entity name to initialize as a single sensor
 #                     optional
 #
 # override-inalign  = flag indicating override of the inalign from pipe_conf
-#                     When enabled, the DTP value is ignored and IPA decides the
-#                     inalign setting depending on the platform: 1 for i.MX95
-#                     (MSB-aligned ISI buffers), otherwise 0.
+#                     When enabled, the DTP value is ignored and IPA decides
+#                     the inalign setting depending on the platform: 1 for
+#                     i.MX95 (MSB-aligned ISI buffers), otherwise 0.
 #                     optional - default: true
 
 %YAML 1.1
@@ -52,6 +65,7 @@ sensors:
     profiles:
       - resolution: [1920, 1280]
         bit-depth: 16
+        mode: standard
         dtp-file: database_mx95mbcam_1920-1280_16bpp.bin
         tuning-id: 2010
         tuning-mode: 0
@@ -68,6 +82,15 @@ sensors:
         bit-depth: 12
         mode: hdr
         dtp-file: database_os08a20_HDR_3840-2160_12bpp.bin
+        tuning-id: 2010
+        tuning-mode: 0
+  - model: ox05b1s
+    socket-port: 50020
+    profiles:
+      - resolution: [2592, 1944]
+        bit-depth: 10
+        mode: rgbIr
+        dtp-file: database_ox05b1s_2592-1944_10bpp.bin
         tuning-id: 2010
         tuning-mode: 0
 ...
