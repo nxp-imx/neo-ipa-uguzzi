@@ -16,7 +16,7 @@
 
 #include <libcamera/ipa/nxpneo_ipa_interface.h>
 
-#include "libcamera/internal/yaml_parser.h"
+#include "libcamera/internal/value_node.h"
 
 namespace libcamera::ipa::nxpneo {
 
@@ -55,11 +55,11 @@ private:
 	static constexpr uint32_t kTuningIdIr = 2011;
 	static constexpr uint32_t kTuningMode = 0;
 
-	int parseSensors(const YamlObject &sensors);
-	int parseSensorProfiles(const YamlObject &profiles,
+	int parseSensors(const ValueNode &sensors);
+	int parseSensorProfiles(const ValueNode &profiles,
 				const std::string &sensor);
-	int parseEntityFilter(const YamlObject &entity);
-	int parseOverrideInAlign(const YamlObject &overrideInAlign);
+	int parseEntityFilter(const ValueNode &entity);
+	int parseOverrideInAlign(const ValueNode &overrideInAlign);
 
 	SensorMap sensorMap_;
 	std::optional<std::string> sensorFilter_;
