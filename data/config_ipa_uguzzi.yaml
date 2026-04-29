@@ -65,6 +65,7 @@ sensors:
     profiles:
       - resolution: [1920, 1280]
         bit-depth: 16
+        mode: standard
         dtp-file: database_mx95mbcam_1920-1280_16bpp.bin
         tuning-id: 2010
         tuning-mode: 0

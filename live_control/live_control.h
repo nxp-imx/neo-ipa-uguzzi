@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * Copyright 2024-2025 NXP
- * live_control.h - NXP NEO uGuzzi Live Control
+ * Copyright 2024-2026 NXP
+ *
+ * NXP NEO uGuzzi Live Control
  */
 
 #pragma once
@@ -63,6 +64,7 @@ public:
 		      const EmbeddedDataPkg *embeddedDataPkg,
 		      const ImageBufferViewSetPkg *imageBuffViewSetPkg,
 		      const IspStatisticsPkg *ispStatPkg,
+		      unsigned int activeChannel,
 		      int timeoutMs);
 
 	int deinit();
@@ -82,11 +84,7 @@ private:
 	}
 
 	int waitForConnection(int timeoutMs);
-	int processTtCmd(const uguzzi_sensor_data_pkg_t *sensorDataPkg,
-			 const EmbeddedDataPkg *embeddedDataPkg,
-			 const ImageBufferViewSetPkg *imageBuffViewSetPkg,
-			 const IspStatisticsPkg *ispStatPkg,
-			 int timeoutMs);
+	int pollForCmd(int timeoutMs);
 	int rxTtCmd();
 	ssize_t readBuf(uint8_t *apBuf, size_t aSizeBytes) const;
 	int writeBuf(const void *apcBuf, size_t aBufSzBytes) const;
@@ -94,6 +92,7 @@ private:
 		       uint8_t apData[],
 		       uint32_t aDataSzBytes);
 
+	std::array<bool, UGUZZI_CAMERA_CNT> cmdToProcess_{};
 	LiveControlStatus status_;
 	int serverFd_;
 	int clientFd_;

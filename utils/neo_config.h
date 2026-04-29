@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * neo_config.h - Configuration helpers for IPA
  * Copyright 2025-2026 NXP
+ *
+ * Configuration helpers for IPA
  */
 
 #pragma once
@@ -22,7 +23,7 @@ namespace libcamera::ipa::nxpneo {
 struct TuningInfo {
 	Size resolution;
 	unsigned int bitDepth;
-	IPAModeType mode;
+	IPAPipelineMode mode;
 	std::string dtpFile;
 	std::vector<uint32_t> tuningId;
 	uint32_t tuningMode;
@@ -41,7 +42,7 @@ public:
 				     const std::string &entity,
 				     Size resolution,
 				     unsigned int bitDepth,
-				     IPAModeType mode) const;
+				     IPAPipelineMode mode) const;
 	uint16_t socketPort(const std::string &model,
 			    const std::string &entity) const;
 	const std::optional<std::string> &sensorFilter() const { return sensorFilter_; }
@@ -50,7 +51,6 @@ public:
 private:
 	static constexpr uint16_t kSocketPort = 50000;
 	static constexpr unsigned int kBitDepth = 16;
-	static constexpr IPAModeType kMode = IPAModeTypeStandard;
 	static constexpr uint32_t kTuningIdRgb = 2010;
 	static constexpr uint32_t kTuningIdIr = 2011;
 	static constexpr uint32_t kTuningMode = 0;
@@ -65,8 +65,11 @@ private:
 	std::optional<std::string> sensorFilter_;
 	bool overrideInAlign_ = true;
 	SocketMap socketMap_;
-	/* Map between the sensor stream mode name and its associated IPA enum value. */
-	static const std::map<std::string, IPAModeType> kIPAModeNameMap;
+	/*
+	 * Map between the pipeline mode name and its associated IPA pipeline
+	 * mode enum value.
+	 */
+	static const std::map<std::string, IPAPipelineMode> kPipelineModeNameMap;
 };
 
 } /* namespace libcamera::ipa::nxpneo */
