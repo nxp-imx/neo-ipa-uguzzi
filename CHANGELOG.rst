@@ -3,6 +3,41 @@
 Change Log
 ==========
 
+Release lf-6.18.20_2.0.0 (June 2026)
+====================================
+
+Associated versions
+-------------------
+
+* IPA release: lf-6.18.20_2.0.0
+* IPA version: UGUZZI_IPA_v0.2.7
+* libcamera release: lf-6.18.20_2.0.0
+* libcamera version: v0.7.1
+* uGuzzi version: 2025. 7.24[1]
+* Tuning Tool version: 0.95.07
+* libuguzzi.so sha256sum: 1d7f7721b74e52563bdebc088de63169f2a15771fd899bde7d2e640a20791318
+* libuguzzi_connect.so sha256sum: 8cf435a34b31647f661564c07563beabf1ec41c533b8d2698bbeb5aac590655d
+
+Added
+-------
+
+* Enable ox05b1s multi-capture controls in RGBIr Dual Mode
+* Add camhelper for vivid cameras
+* Enable uGuzzi processing with multi channels
+
+Changed
+-------
+
+* Use v4l2-isp generic framework for params and stats
+* Update IPA NEO mojom interface with 2026 Q2 release
+   * Enums transformed as scoped enums
+* Remove rgbIr member from camHelper attributes
+* Rename the CameraHelper setControls into sensorControlList
+* Change the uGuzzi AE mode to non-harmonized
+* Synchronize header files to libcamera v0.7.1
+* Update for libcamera v0.7.1:
+   * Replace usage of YamlObject class by ValueNode
+
 Release lf-6.18.2_1.0.0 (March 2026)
 ====================================
 
