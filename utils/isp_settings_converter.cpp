@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * isp_settings_converter.cpp
- * Conversion between the uGuzzi structures and the NXP NEOISP UAPI
+ * Copyright 2024-2026 NXP
  *
- * Copyright 2024-2025 NXP
+ * Conversion between the uGuzzi structures and the NXP NEOISP UAPI
  */
 
 #include "isp_settings_converter.h"
@@ -14,7 +13,7 @@ using namespace std;
 
 namespace libcamera::ipa::nxpneo {
 
-static void convertPipeConf(neoisp_pipe_conf_cfg_s *neoispPipeConf,
+static bool convertPipeConf(neoisp_pipe_conf_cfg_s *neoispPipeConf,
 			    imx9x_isp_pipe_conf_cfg_t *pipeconf)
 {
 	neoispPipeConf->img_conf_inalign0 =
@@ -25,19 +24,22 @@ static void convertPipeConf(neoisp_pipe_conf_cfg_s *neoispPipeConf,
 		pipeconf->line_path_0_pixel_alignment;
 	neoispPipeConf->img_conf_lpalign1 =
 		pipeconf->line_path_1_pixel_alignment;
+
+	return true;
 }
 
-static void convertHc(neoisp_head_color_cfg_s *neoispHc,
+static bool convertHc(neoisp_head_color_cfg_s *neoispHc,
 		      imx9x_isp_hc_cfg_t *hc)
 {
 	neoispHc->ctrl_hoffset = (__u8)hc->horizontal_offset;
 	neoispHc->ctrl_voffset = (__u8)hc->vertical_offset;
+
+	return true;
 }
 
-static void convertHdrDecompress0(neoisp_hdr_decompress0_cfg_s *neoispHdrDecompress0,
+static bool convertHdrDecompress0(neoisp_hdr_decompress0_cfg_s *neoispHdrDecompress0,
 				  imx9x_isp_hdr_decompress_dcg_cfg_t *decompressDcg)
 {
-	neoispHdrDecompress0->ctrl_enable = (__u8)decompressDcg->enable;
 	neoispHdrDecompress0->knee_point1 = (__u16)decompressDcg->knee_point1;
 	neoispHdrDecompress0->knee_point2 = (__u16)decompressDcg->knee_point2;
 	neoispHdrDecompress0->knee_point3 = (__u16)decompressDcg->knee_point3;
@@ -57,12 +59,13 @@ static void convertHdrDecompress0(neoisp_hdr_decompress0_cfg_s *neoispHdrDecompr
 	neoispHdrDecompress0->knee_npoint2 = (__u32)decompressDcg->knee_npoint2;
 	neoispHdrDecompress0->knee_npoint3 = (__u32)decompressDcg->knee_npoint3;
 	neoispHdrDecompress0->knee_npoint4 = (__u32)decompressDcg->knee_npoint4;
+
+	return decompressDcg->enable;
 }
 
-static void convertHdrDecompress1(neoisp_hdr_decompress1_cfg_s *neoispHdrDecompress1,
+static bool convertHdrDecompress1(neoisp_hdr_decompress1_cfg_s *neoispHdrDecompress1,
 				  imx9x_isp_hdr_decompress_vs_cfg_t *decompressVs)
 {
-	neoispHdrDecompress1->ctrl_enable = (__u8)decompressVs->enable;
 	neoispHdrDecompress1->knee_point1 = (__u16)decompressVs->knee_point1;
 	neoispHdrDecompress1->knee_point2 = (__u16)decompressVs->knee_point2;
 	neoispHdrDecompress1->knee_point3 = (__u16)decompressVs->knee_point3;
@@ -82,11 +85,12 @@ static void convertHdrDecompress1(neoisp_hdr_decompress1_cfg_s *neoispHdrDecompr
 	neoispHdrDecompress1->knee_npoint2 = (__u16)decompressVs->knee_npoint2;
 	neoispHdrDecompress1->knee_npoint3 = (__u16)decompressVs->knee_npoint3;
 	neoispHdrDecompress1->knee_npoint4 = (__u16)decompressVs->knee_npoint4;
+
+	return decompressVs->enable;
 }
 
-static void convertBNR(neoisp_bnr_cfg_s *neoispBnr, imx9x_isp_bnr_cfg_t *bnr)
+static bool convertBNR(neoisp_bnr_cfg_s *neoispBnr, imx9x_isp_bnr_cfg_t *bnr)
 {
-	neoispBnr->ctrl_enable = (__u8)bnr->enable;
 	neoispBnr->ctrl_debug = (__u8)bnr->debug;
 	neoispBnr->ctrl_obpp = (__u8)bnr->output_bpp;
 	neoispBnr->ctrl_nhood = (__u8)bnr->neighbourhood_pattern;
@@ -135,21 +139,24 @@ static void convertBNR(neoisp_bnr_cfg_s *neoispBnr, imx9x_isp_bnr_cfg_t *bnr)
 	neoispBnr->calpha_gain_gain = (__u16)bnr->c_config.alpha_gain;
 	neoispBnr->calpha_gain_offset = (__u16)bnr->c_config.alpha_offset;
 	neoispBnr->stretch_gain = (__u16)bnr->output_gain;
+
+	return bnr->enable;
 }
 
-static void convertVignettingCtrl(neoisp_vignetting_ctrl_cfg_s *neoispVignetting,
+static bool convertVignettingCtrl(neoisp_vignetting_ctrl_cfg_s *neoispVignetting,
 				  const imx9x_isp_vignetting_ctrl_cfg_t *vignettingCtrl)
 {
-	neoispVignetting->ctrl_enable = (__u8)vignettingCtrl->enable;
 	neoispVignetting->blk_conf_rows = (__u8)vignettingCtrl->blocks_cnt_y;
 	neoispVignetting->blk_conf_cols = (__u8)vignettingCtrl->blocks_cnt_x;
 	neoispVignetting->blk_size_ysize = (__u16)vignettingCtrl->block_height;
 	neoispVignetting->blk_size_xsize = (__u16)vignettingCtrl->block_width;
 	neoispVignetting->blk_stepy_step = (__u16)vignettingCtrl->step_y;
 	neoispVignetting->blk_stepx_step = (__u16)vignettingCtrl->step_x;
+
+	return vignettingCtrl->enable;
 }
 
-static void convertDemosaic(neoisp_demosaic_cfg_s *neoispDemosaic,
+static bool convertDemosaic(neoisp_demosaic_cfg_s *neoispDemosaic,
 			    imx9x_isp_demosaic_cfg_t *demosaic)
 {
 	neoispDemosaic->ctrl_fmt = (__u8)demosaic->format;
@@ -158,13 +165,14 @@ static void convertDemosaic(neoisp_demosaic_cfg_s *neoispDemosaic,
 	neoispDemosaic->dynamics_ctl0_strengthg = (__u16)demosaic->green_strength;
 	neoispDemosaic->dynamics_ctl0_strengthc = (__u16)demosaic->red_blue_strength;
 	neoispDemosaic->dynamics_ctl2_max_impact = (__u16)demosaic->max_impact_factor;
+
+	return true;
 }
 
-static void convertCtemp(neoisp_ctemp_cfg_s *neoispCtemp, imx9x_isp_ctemp_cfg_t *ctemp,
+static bool convertCtemp(neoisp_ctemp_cfg_s *neoispCtemp, imx9x_isp_ctemp_cfg_t *ctemp,
 			 imx9x_isp_ctemp_csc_cfg_t *ctempCsc,
 			 imx9x_isp_ctemp_gr_vs_gb_cfg_t *ctempGrVsGb)
 {
-	neoispCtemp->ctrl_enable = (__u8)ctemp->ctrl.enable;
 	neoispCtemp->ctrl_cscon = (__u8)ctemp->ctrl.use_csc;
 	neoispCtemp->ctrl_ibpp = (__u8)ctemp->ctrl.input_bpp;
 	neoispCtemp->luma_th_thl = (__u16)ctemp->ctrl.low_luma_threshold;
@@ -210,12 +218,13 @@ static void convertCtemp(neoisp_ctemp_cfg_s *neoispCtemp, imx9x_isp_ctemp_cfg_t 
 	}
 	neoispCtemp->gr_avg_in_gr_agv = (__u32)ctempGrVsGb->input_gr_average;
 	neoispCtemp->gb_avg_in_gb_agv = (__u32)ctempGrVsGb->input_gb_average;
+
+	return ctemp->ctrl.enable;
 }
 
-static void convertHdrMerge(neoisp_hdr_merge_cfg_s *neoispHdrMerge,
+static bool convertHdrMerge(neoisp_hdr_merge_cfg_s *neoispHdrMerge,
 			    imx9x_isp_hdr_merge_cfg_t *hdrMerge)
 {
-	neoispHdrMerge->ctrl_enable = (__u8)hdrMerge->ctrl.enable;
 	neoispHdrMerge->ctrl_motion_fix_en =
 		(__u8)hdrMerge->ctrl.enable_motion_artifact_fixing;
 	neoispHdrMerge->ctrl_blend_3x3 = (__u8)hdrMerge->ctrl.blend_mode;
@@ -237,35 +246,41 @@ static void convertHdrMerge(neoisp_hdr_merge_cfg_s *neoispHdrMerge,
 	neoispHdrMerge->upscale_imgscale0 = (__u8)hdrMerge->upscale_dcg;
 	neoispHdrMerge->upscale_imgscale1 = (__u8)hdrMerge->upscale_vs;
 	neoispHdrMerge->post_scale_scale = (__u8)hdrMerge->output_scale;
+
+	return hdrMerge->ctrl.enable;
 }
 
-static void convertEe(neoisp_ee_cfg_s *neoispEe, imx9x_isp_ee_cfg_t *ee)
+static bool convertEe(neoisp_ee_cfg_s *neoispEe, imx9x_isp_ee_cfg_t *ee)
 {
-	neoispEe->ctrl_enable = (__u8)ee->enable;
 	neoispEe->ctrl_debug = (__u8)ee->output_debug_info;
 	neoispEe->maskgain_gain = (__u8)ee->gain;
 	neoispEe->coring_coring = (__u32)ee->coring;
 	neoispEe->clip_clip = (__u32)ee->clip;
+
+	return ee->enable;
 }
 
-static void convertDf(neoisp_df_cfg_s *neoispDf, imx9x_isp_df_cfg_t *df)
+static bool convertDf(neoisp_df_cfg_s *neoispDf, imx9x_isp_df_cfg_t *df)
 {
-	neoispDf->ctrl_enable = (__u8)df->enable;
 	neoispDf->ctrl_debug = (__u8)df->output_debug_info;
 	neoispDf->blend_shift_shift = (__u8)df->blending_right_shift;
 	neoispDf->th_scale_scale = (__u32)df->blending_scale;
 	neoispDf->blend_th0_th = (__u32)df->blending_threshold_0;
+
+	return df->enable;
 }
 
-static void convertCas(neoisp_cas_cfg_s *neoispCas, imx9x_isp_cas_cfg_t *cas)
+static bool convertCas(neoisp_cas_cfg_s *neoispCas, imx9x_isp_cas_cfg_t *cas)
 {
 	neoispCas->gain_shift = (__u8)cas->gain_shift;
 	neoispCas->gain_scale = (__u16)cas->gain_scale;
 	neoispCas->corr_corr = (__u16)cas->correction;
 	neoispCas->offset_offset = (__u16)cas->offset;
+
+	return true;
 }
 
-static void convertGcmInputCsc(neoisp_gcm_cfg_s *neoispGcm,
+static bool convertGcmInputCsc(neoisp_gcm_cfg_s *neoispGcm,
 			       const imx9x_isp_gcm_input_csc_cfg_t *gcmInputCsc)
 {
 	for (uint32_t row = 0; row < GCM_INPUT_CSC_MATRIX_ROWS; row++)
@@ -274,9 +289,11 @@ static void convertGcmInputCsc(neoisp_gcm_cfg_s *neoispGcm,
 
 	for (uint32_t i = 0; i < GCM_INPUT_CSC_OFFSETS_SIZE; i++)
 		neoispGcm->ioffsets[i] = (__s16)gcmInputCsc->offsets[i];
+
+	return true;
 }
 
-static void convertGcmGamma(neoisp_gcm_cfg_s *neoispGcm,
+static bool convertGcmGamma(neoisp_gcm_cfg_s *neoispGcm,
 			    const imx9x_isp_gcm_gamma_cfg_t *gcmGamma)
 {
 	neoispGcm->gamma0_gamma0 = (__u16)gcmGamma->gamma_power_ch0;
@@ -294,9 +311,11 @@ static void convertGcmGamma(neoisp_gcm_cfg_s *neoispGcm,
 	neoispGcm->lowth_ctrl01_threshold0 = (__u16)gcmGamma->linear_threshold_ch0;
 	neoispGcm->lowth_ctrl01_threshold1 = (__u16)gcmGamma->linear_threshold_ch1;
 	neoispGcm->lowth_ctrl2_threshold2 = (__u16)gcmGamma->linear_threshold_ch2;
+
+	return true;
 }
 
-static void convertGcmOutputCsc(neoisp_gcm_cfg_s *neoispGcm,
+static bool convertGcmOutputCsc(neoisp_gcm_cfg_s *neoispGcm,
 				const imx9x_isp_gcm_output_csc_cfg_t *gcmOutputCsc)
 {
 	neoispGcm->mat_confg_sign_confg = (__u8)gcmOutputCsc->sign_config;
@@ -307,27 +326,32 @@ static void convertGcmOutputCsc(neoisp_gcm_cfg_s *neoispGcm,
 
 	for (uint32_t i = 0; i < GCM_OUTPUT_CSC_OFFSETS_SIZE; i++)
 		neoispGcm->ooffsets[i] = (__s16)gcmOutputCsc->offsets[i];
+
+	return true;
 }
 
-static void convertNr(neoisp_nr_cfg_s *neoispNr, imx9x_isp_nr_cfg_t *nr)
+static bool convertNr(neoisp_nr_cfg_s *neoispNr, imx9x_isp_nr_cfg_t *nr)
 {
-	neoispNr->ctrl_enable = (__u8)nr->enable;
 	neoispNr->ctrl_debug = (__u8)nr->output_debug_info;
 	neoispNr->blend_scale_gain = (__u8)nr->blending_gain;
 	neoispNr->blend_scale_shift = (__u8)nr->blending_right_shift;
 	neoispNr->blend_scale_scale = (__u16)nr->blending_scale;
 	neoispNr->blend_th0_th = (__u32)nr->blending_threshold_0;
+
+	return nr->enable;
 }
 
-static void convertRoi(neoisp_roi_cfg_s *neoispRoi, imx9x_isp_autofocus_roi_cfg_t *roi)
+static bool convertRoi(neoisp_roi_cfg_s *neoispRoi, imx9x_isp_autofocus_roi_cfg_t *roi)
 {
 	neoispRoi->xpos = (__u16)roi->x;
 	neoispRoi->ypos = (__u16)roi->y;
 	neoispRoi->width = (__u16)roi->width;
 	neoispRoi->height = (__u16)roi->height;
+
+	return true;
 }
 
-static void convertAf(neoisp_af_cfg_s *neoispAf, imx9x_isp_autofocus_cfg_t *autofocus)
+static bool convertAf(neoisp_af_cfg_s *neoispAf, imx9x_isp_autofocus_cfg_t *autofocus)
 {
 	neoispAf->fil1_shift_shift = (__u8)autofocus->filter1_shift;
 	std::copy(&autofocus->filter1_coefficients[0],
@@ -341,18 +365,21 @@ static void convertAf(neoisp_af_cfg_s *neoispAf, imx9x_isp_autofocus_cfg_t *auto
 	for (int i = 0; i < NEO_AF_ROIS_CNT; i++) {
 		convertRoi(&neoispAf->af_roi[i], &autofocus->rois_config[i]);
 	}
+
+	return true;
 }
 
-static inline void convertConvmed(neoisp_convmed_cfg_s *neoispConvmed,
+static inline bool convertConvmed(neoisp_convmed_cfg_s *neoispConvmed,
 				  const imx9x_isp_convmed_cfg_t *convmed)
 {
 	neoispConvmed->ctrl_flt = (__u8)convmed->filter_type;
+
+	return true;
 }
 
-static void convertIrCompress(neoisp_ir_compress_cfg_s *neoispIrCompress,
+static bool convertIrCompress(neoisp_ir_compress_cfg_s *neoispIrCompress,
 			      imx9x_isp_ir_compress_cfg_t *irCompress)
 {
-	neoispIrCompress->ctrl_enable = (__u8)irCompress->enable;
 	neoispIrCompress->ctrl_obpp = (__u8)irCompress->output_bpp;
 	neoispIrCompress->knee_point1_kneepoint = (__u32)irCompress->knee_point1;
 	neoispIrCompress->knee_point2_kneepoint = (__u32)irCompress->knee_point2;
@@ -373,9 +400,11 @@ static void convertIrCompress(neoisp_ir_compress_cfg_s *neoispIrCompress,
 	neoispIrCompress->knee_npoint2_kneepoint = (__u16)irCompress->knee_npoint2;
 	neoispIrCompress->knee_npoint3_kneepoint = (__u16)irCompress->knee_npoint3;
 	neoispIrCompress->knee_npoint4_kneepoint = (__u16)irCompress->knee_npoint4;
+
+	return irCompress->enable;
 }
 
-static void convertHist(const imx9x_isp_stat_hist_cfg_t *hist,
+static bool convertHist(const imx9x_isp_stat_hist_cfg_t *hist,
 			neoisp_stat_hist_cfg_s *neoispHist)
 {
 	neoispHist->hist_scale_scale = (__u32)hist->scale;
@@ -384,9 +413,11 @@ static void convertHist(const imx9x_isp_stat_hist_cfg_t *hist,
 	neoispHist->hist_ctrl_pattern = (__u8)hist->neighboring_pattern;
 	neoispHist->hist_ctrl_dir_input1_dif = (__u8)hist->binning_method;
 	neoispHist->hist_ctrl_lin_input1_log = (__u8)hist->type;
+
+	return true;
 }
 
-static void convertStat(neoisp_stat_cfg_s *neoispStat,
+static bool convertStat(neoisp_stat_cfg_s *neoispStat,
 			const imx9x_isp_stat_cfg_t *stat)
 {
 	neoispStat->roi0.xpos = (__u16)stat->foreground.x;
@@ -401,12 +432,13 @@ static void convertStat(neoisp_stat_cfg_s *neoispStat,
 	for (int i = 0; i < NEO_STAT_HIST_CNT; i++) {
 		convertHist(&stat->hists[i], &neoispStat->hists[i]);
 	}
+
+	return true;
 }
 
-static void convertRgbir(neoisp_rgbir_cfg_s *neoispRgbir, imx9x_isp_rgbir_cfg_t *rgbir,
+static bool convertRgbir(neoisp_rgbir_cfg_s *neoispRgbir, imx9x_isp_rgbir_cfg_t *rgbir,
 			 uint32_t longest2ShortestFrameRatio)
 {
-	neoispRgbir->ctrl_enable = (__u8)rgbir->enable;
 	neoispRgbir->ccm0_ccm = (__u16)rgbir->red_correction;
 	neoispRgbir->ccm1_ccm = (__u16)rgbir->green_correction;
 	neoispRgbir->ccm2_ccm = (__u16)rgbir->blue_correction;
@@ -430,9 +462,11 @@ static void convertRgbir(neoisp_rgbir_cfg_s *neoispRgbir, imx9x_isp_rgbir_cfg_t 
 		(greenThreshold < 0xFFFC0U) ? (uint32_t)greenThreshold : 0xFFFC0U;
 	neoispRgbir->ccm2_th_threshold =
 		(blueThreshold < 0xFFFC0U) ? (uint32_t)blueThreshold : 0xFFFC0U;
+
+	return rgbir->enable;
 }
 
-static inline void convertRgbirStat(const imx9x_isp_rgbir_stat_cfg_t *rgbirStat,
+static inline bool convertRgbirStat(const imx9x_isp_rgbir_stat_cfg_t *rgbirStat,
 				    neoisp_rgbir_cfg_s *neoispRgbir)
 {
 	static_assert(NEO_RGBIR_ROI_CNT == 2, "Expected NEO_RGBIR_ROI_CNT to be 2");
@@ -447,9 +481,11 @@ static inline void convertRgbirStat(const imx9x_isp_rgbir_stat_cfg_t *rgbirStat,
 	for (int i = 0; i < NEO_RGBIR_STAT_HIST_CNT; i++) {
 		convertHist(&rgbirStat->hists[i], &neoispRgbir->hists[i]);
 	}
+
+	return true;
 }
 
-static void convertObwbDcg(neoisp_obwb_cfg_s *neoispObwb,
+static bool convertObwbDcg(neoisp_obwb_cfg_s *neoispObwb,
 			   imx9x_isp_obwb_ctrl_cfg_t *obwb,
 			   imx9x_isp_obwb_blc_cfg_t *dcg,
 			   imx9x_isp_obwb_wb_gains_cfg_t *genDcg)
@@ -463,9 +499,11 @@ static void convertObwbDcg(neoisp_obwb_cfg_s *neoispObwb,
 	neoispObwb->gb_ctrl_gain = (__u16)genDcg->gb;
 	neoispObwb->b_ctrl_offset = (__u16)dcg->b;
 	neoispObwb->b_ctrl_gain = (__u16)genDcg->b;
+
+	return true;
 }
 
-static void convertObwbVs(neoisp_obwb_cfg_s *neoispObwb,
+static bool convertObwbVs(neoisp_obwb_cfg_s *neoispObwb,
 			  imx9x_isp_obwb_ctrl_cfg_t *obwb,
 			  imx9x_isp_obwb_blc_cfg_t *vs,
 			  imx9x_isp_obwb_wb_gains_cfg_t *genVs)
@@ -479,9 +517,11 @@ static void convertObwbVs(neoisp_obwb_cfg_s *neoispObwb,
 	neoispObwb->gb_ctrl_gain = (__u16)genVs->gb;
 	neoispObwb->b_ctrl_offset = (__u16)vs->b;
 	neoispObwb->b_ctrl_gain = (__u16)genVs->b;
+
+	return true;
 }
 
-static void convertObwbHdr(neoisp_obwb_cfg_s *neoispObwb,
+static bool convertObwbHdr(neoisp_obwb_cfg_s *neoispObwb,
 			   imx9x_isp_obwb_ctrl_cfg_t *obwb,
 			   imx9x_isp_obwb_blc_cfg_t *hdr,
 			   imx9x_isp_obwb_wb_gains_cfg_t *genHdr)
@@ -495,9 +535,11 @@ static void convertObwbHdr(neoisp_obwb_cfg_s *neoispObwb,
 	neoispObwb->gb_ctrl_gain = (__u16)genHdr->gb;
 	neoispObwb->b_ctrl_offset = (__u16)hdr->b;
 	neoispObwb->b_ctrl_gain = (__u16)genHdr->b;
+
+	return true;
 }
 
-static void convertDrc(
+static bool convertDrc(
 	neoisp_dr_comp_cfg_s *neoispDrc,
 	imx9x_isp_drc_alpha_blending_cfg_t *drcAlpha,
 	imx9x_isp_drc_global_tonemap_ctrl_cfg_t *drcGlobalControl,
@@ -526,22 +568,28 @@ static void convertDrc(
 	neoispDrc->lcl_stretch_offset = (__u16)drcLocalStretchOffset->offset;
 	neoispDrc->lcl_stretch_stretch = (__u16)drcLocalStretchOffset->stretch;
 	neoispDrc->gbl_gain_gain = (__u16)drcGlobalGain->gain_factor;
+
+	return true;
 }
 
-static void convertDrcGlobal(neoisp_drc_global_tonemap_mem_params_s *neoispDrcGlobal,
+static bool convertDrcGlobal(neoisp_drc_global_tonemap_mem_params_s *neoispDrcGlobal,
 			     imx9x_isp_drc_global_tonemap_lut_cfg_t *drcGlobalLUT)
 {
 	std::copy(&drcGlobalLUT->global_tonemap_LUT[0],
 		  &drcGlobalLUT->global_tonemap_LUT[0] + NEO_DRC_GLOBAL_TONEMAP_SIZE,
 		  &neoispDrcGlobal->drc_global_tonemap[0]);
+
+	return true;
 }
 
-static void convertDrcLocal(neoisp_drc_local_tonemap_mem_params_s *neoispDrcLocal,
+static bool convertDrcLocal(neoisp_drc_local_tonemap_mem_params_s *neoispDrcLocal,
 			    imx9x_isp_drc_local_tonemap_lut_cfg_t *drcLocalLUT)
 {
 	std::copy(&drcLocalLUT->local_tonemap_LUT[0],
 		  &drcLocalLUT->local_tonemap_LUT[0] + NEO_DRC_LOCAL_TONEMAP_SIZE,
 		  &neoispDrcLocal->drc_local_tonemap[0]);
+
+	return true;
 }
 
 static void clipValue(int64_t *apValue, int64_t aMin, int64_t aMax)
@@ -586,7 +634,7 @@ static int16_t mulRowCol(
 	return (int16_t)lResult;
 }
 
-static void convertRgb2yuv(neoisp_rgb2yuv_cfg_s *neoispRgb2yuv,
+static bool convertRgb2yuv(neoisp_rgb2yuv_cfg_s *neoispRgb2yuv,
 			   imx9x_isp_rgb2yuv_cfg_t *rgb2yuv,
 			   imx9x_isp_ccm_cfg_t *ccm)
 {
@@ -604,157 +652,163 @@ static void convertRgb2yuv(neoisp_rgb2yuv_cfg_s *neoispRgb2yuv,
 	neoispRgb2yuv->mat_rxcy[2][0] = mulRowCol(rgb2yuv->csc_matrix, ccm->ccm_matrix, 2, 0);
 	neoispRgb2yuv->mat_rxcy[2][1] = mulRowCol(rgb2yuv->csc_matrix, ccm->ccm_matrix, 2, 1);
 	neoispRgb2yuv->mat_rxcy[2][2] = mulRowCol(rgb2yuv->csc_matrix, ccm->ccm_matrix, 2, 2);
+
+	return true;
 }
 
-static void convertVigTable(neoisp_vignetting_table_mem_params_s *neoispVigTable,
+static bool convertVigTable(neoisp_vignetting_table_mem_params_s *neoispVigTable,
 			    const imx9x_isp_vignetting_lut_cfg_t *vignetLut)
 {
 	for (uint32_t i = 0; i < VIGNETTING_TABLE_SIZE; i++) {
 		neoispVigTable->vignetting_table[i] =
 			vignetLut->vignetting_table[i];
 	}
+
+	return true;
 }
 
 void convertUguzziIspCfg2IspDrvCfg(imx9x_isp_cfg_prms_t *cfgParams,
 				   uint32_t longest2ShortestFrameRatio,
 				   NxpNeoParams *params)
 {
+	bool enable;
+
 	/* pipeline 1 */
 	if (cfgParams->update[PIPE_CONF_CFG]) {
 		auto config = params->block<BlockParamsType::PipeConf>();
-		convertPipeConf(config.params(), &cfgParams->pipe_conf);
-		config.setUpdate(true);
+		enable = convertPipeConf(config.params(), &cfgParams->pipe_conf);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[HC_CFG]) {
 		auto config = params->block<BlockParamsType::HeadColor>();
-		convertHc(config.params(), &cfgParams->hc);
-		config.setUpdate(true);
+		enable = convertHc(config.params(), &cfgParams->hc);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[HDR_DECOMPRESS_DCG_CFG]) {
 		auto config = params->block<BlockParamsType::HdrDec0>();
-		convertHdrDecompress0(config.params(), &cfgParams->decompress_dcg);
-		config.setUpdate(true);
+		enable = convertHdrDecompress0(config.params(), &cfgParams->decompress_dcg);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[HDR_DECOMPRESS_VS_CFG]) {
 		auto config = params->block<BlockParamsType::HdrDec1>();
-		convertHdrDecompress1(config.params(), &cfgParams->decompress_vs);
-		config.setUpdate(true);
+		enable = convertHdrDecompress1(config.params(), &cfgParams->decompress_vs);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[HDR_MERGE_CFG]) {
 		auto config = params->block<BlockParamsType::HdrMerge>();
-		convertHdrMerge(config.params(), &cfgParams->hdr_merge);
-		config.setUpdate(true);
+		enable = convertHdrMerge(config.params(), &cfgParams->hdr_merge);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[RGBIR_CFG] || cfgParams->update[RGBIR_STAT_CFG]) {
 		auto config = params->block<BlockParamsType::RgbIr>();
-		convertRgbir(config.params(),
-			     &cfgParams->rgbir,
-			     longest2ShortestFrameRatio);
-		convertRgbirStat(&cfgParams->rgbir_stat, config.params());
-		config.setUpdate(true);
+		enable = convertRgbir(config.params(),
+				      &cfgParams->rgbir,
+				      longest2ShortestFrameRatio);
+		enable &= convertRgbirStat(&cfgParams->rgbir_stat, config.params());
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[STAT_CFG]) {
 		auto config = params->block<BlockParamsType::Stat>();
-		convertStat(config.params(), &cfgParams->stat);
-		config.setUpdate(true);
+		enable = convertStat(config.params(), &cfgParams->stat);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[IR_COMPRESS_CFG]) {
 		auto config = params->block<BlockParamsType::IrComp>();
-		convertIrCompress(config.params(), &cfgParams->ir_compress);
-		config.setUpdate(true);
+		enable = convertIrCompress(config.params(), &cfgParams->ir_compress);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[BNR_CFG]) {
 		auto config = params->block<BlockParamsType::Bnr>();
-		convertBNR(config.params(), &cfgParams->bnr);
-		config.setUpdate(true);
+		enable = convertBNR(config.params(), &cfgParams->bnr);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[VIGNETTING_CTRL_CFG]) {
 		auto config = params->block<BlockParamsType::VigCtrl>();
-		convertVignettingCtrl(config.params(), &cfgParams->vignetting_ctrl);
-		config.setUpdate(true);
+		enable = convertVignettingCtrl(config.params(), &cfgParams->vignetting_ctrl);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[VIGNETTING_LUT_CFG]) {
 		auto config = params->block<BlockParamsType::VigTable>();
-		convertVigTable(config.params(), &cfgParams->vignetting_lut);
-		config.setUpdate(true);
+		enable = convertVigTable(config.params(), &cfgParams->vignetting_lut);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[CTEMP_CFG] || cfgParams->update[CTEMP_CSC_CFG] || cfgParams->update[CTEMP_GR_VS_GB_CFG]) {
 		auto config = params->block<BlockParamsType::CTemp>();
-		convertCtemp(config.params(), &cfgParams->ctemp, &cfgParams->ctemp_csc, &cfgParams->ctemp_gr_vs_gb);
-		config.setUpdate(true);
+		enable = convertCtemp(config.params(), &cfgParams->ctemp, &cfgParams->ctemp_csc, &cfgParams->ctemp_gr_vs_gb);
+		config.setEnabled(enable);
 	}
 	static_assert(NEO_OBWB_CNT == 3, "Expected NEO_OBWB_CNT to be 3");
 	if (cfgParams->update[OBWB_BLC_DCG_CFG] || cfgParams->update[OBWB_CTRL_CFG] || cfgParams->update[OBWB_WB_GAINS_DCG_CFG]) {
 		auto config = params->block<BlockParamsType::Obwb0>();
-		convertObwbDcg(config.params(), &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_dcg, &cfgParams->obwb_wb_gains_dcg);
-		config.setUpdate(true);
+		enable = convertObwbDcg(config.params(), &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_dcg, &cfgParams->obwb_wb_gains_dcg);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[OBWB_BLC_VS_CFG] || cfgParams->update[OBWB_CTRL_CFG] || cfgParams->update[OBWB_WB_GAINS_VS_CFG]) {
 		auto config = params->block<BlockParamsType::Obwb1>();
-		convertObwbVs(config.params(), &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_vs, &cfgParams->obwb_wb_gains_vs);
-		config.setUpdate(true);
+		enable = convertObwbVs(config.params(), &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_vs, &cfgParams->obwb_wb_gains_vs);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[OBWB_BLC_HDR_CFG] || cfgParams->update[OBWB_CTRL_CFG] || cfgParams->update[OBWB_WB_GAINS_HDR_CFG]) {
 		auto config = params->block<BlockParamsType::Obwb2>();
-		convertObwbHdr(config.params(), &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_hdr, &cfgParams->obwb_wb_gains_hdr);
-		config.setUpdate(true);
+		enable = convertObwbHdr(config.params(), &cfgParams->obwb_ctrl, &cfgParams->obwb_blc_hdr, &cfgParams->obwb_wb_gains_hdr);
+		config.setEnabled(enable);
 	}
 	/* Pipeline 2 */
 	if (cfgParams->update[DEMOSAIC_CFG]) {
 		auto config = params->block<BlockParamsType::Demosaic>();
-		convertDemosaic(config.params(), &cfgParams->demosaic);
-		config.setUpdate(true);
+		enable = convertDemosaic(config.params(), &cfgParams->demosaic);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[RGB2YUV_CFG] || cfgParams->update[CCM_CFG]) {
 		auto config = params->block<BlockParamsType::Rgb2Yuv>();
-		convertRgb2yuv(config.params(), &cfgParams->rgb2yuv, &cfgParams->ccm);
-		config.setUpdate(true);
+		enable = convertRgb2yuv(config.params(), &cfgParams->rgb2yuv, &cfgParams->ccm);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[DRC_ALPHA_BLENDING_CFG] || cfgParams->update[DRC_GLOBAL_TONEMAP_CTRL_CFG] || cfgParams->update[DRC_LOCAL_TONEMAP_CTRL_CFG] || cfgParams->update[DRC_GLOBAL_GAIN_FACTOR_CFG] || cfgParams->update[DRC_LOCAL_STRETCH_OFFSET_CFG]) {
 		auto config = params->block<BlockParamsType::DrComp>();
-		convertDrc(config.params(), &cfgParams->drc_alpha_blending, &cfgParams->drc_global_tonemap_ctrl, &cfgParams->drc_local_tonemap_ctrl, &cfgParams->drc_global_gain_factor, &cfgParams->drc_local_stretch_offset);
-		config.setUpdate(true);
+		enable = convertDrc(config.params(), &cfgParams->drc_alpha_blending, &cfgParams->drc_global_tonemap_ctrl, &cfgParams->drc_local_tonemap_ctrl, &cfgParams->drc_global_gain_factor, &cfgParams->drc_local_stretch_offset);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[DRC_GLOBAL_TONEMAP_LUT_CFG]) {
 		auto config = params->block<BlockParamsType::DrcGlobalTonemap>();
-		convertDrcGlobal(config.params(), &cfgParams->drc_global_tonemap_lut);
-		config.setUpdate(true);
+		enable = convertDrcGlobal(config.params(), &cfgParams->drc_global_tonemap_lut);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[DRC_LOCAL_TONEMAP_LUT_CFG]) {
 		auto config = params->block<BlockParamsType::DrcLocalTonemap>();
-		convertDrcLocal(config.params(), &cfgParams->drc_local_tonemap_lut);
-		config.setUpdate(true);
+		enable = convertDrcLocal(config.params(), &cfgParams->drc_local_tonemap_lut);
+		config.setEnabled(enable);
 	}
 	/* Denoising Pipeline */
 	if (cfgParams->update[NR_CFG]) {
 		auto config = params->block<BlockParamsType::Nr>();
-		convertNr(config.params(), &cfgParams->nr);
-		config.setUpdate(true);
+		enable = convertNr(config.params(), &cfgParams->nr);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[AUTOFOCUS_CFG]) {
 		auto config = params->block<BlockParamsType::Af>();
-		convertAf(config.params(), &cfgParams->autofocus);
-		config.setUpdate(true);
+		enable = convertAf(config.params(), &cfgParams->autofocus);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[EE_CFG]) {
 		auto config = params->block<BlockParamsType::Ee>();
-		convertEe(config.params(), &cfgParams->ee);
-		config.setUpdate(true);
+		enable = convertEe(config.params(), &cfgParams->ee);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[DF_CFG]) {
 		auto config = params->block<BlockParamsType::Df>();
-		convertDf(config.params(), &cfgParams->df);
-		config.setUpdate(true);
+		enable = convertDf(config.params(), &cfgParams->df);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[CONVMED_CFG]) {
 		auto config = params->block<BlockParamsType::Convmed>();
-		convertConvmed(config.params(), &cfgParams->convmed);
-		config.setUpdate(true);
+		enable = convertConvmed(config.params(), &cfgParams->convmed);
+		config.setEnabled(enable);
 	}
 	if (cfgParams->update[CAS_CFG]) {
 		auto config = params->block<BlockParamsType::Cas>();
-		convertCas(config.params(), &cfgParams->cas);
-		config.setUpdate(true);
+		enable = convertCas(config.params(), &cfgParams->cas);
+		config.setEnabled(enable);
 	}
 	const bool gcmUpdated =
 		cfgParams->update[GCM_INPUT_CSC_CFG] != 0 ||
@@ -762,10 +816,10 @@ void convertUguzziIspCfg2IspDrvCfg(imx9x_isp_cfg_prms_t *cfgParams,
 		cfgParams->update[GCM_OUTPUT_CSC_CFG] != 0;
 	if (gcmUpdated) {
 		auto config = params->block<BlockParamsType::Gcm>();
-		convertGcmInputCsc(config.params(), &cfgParams->gcm_input_csc);
-		convertGcmGamma(config.params(), &cfgParams->gcm_gamma);
-		convertGcmOutputCsc(config.params(), &cfgParams->gcm_output_csc);
-		config.setUpdate(true);
+		enable = convertGcmInputCsc(config.params(), &cfgParams->gcm_input_csc);
+		enable &= convertGcmGamma(config.params(), &cfgParams->gcm_gamma);
+		enable &= convertGcmOutputCsc(config.params(), &cfgParams->gcm_output_csc);
+		config.setEnabled(enable);
 	}
 }
 
