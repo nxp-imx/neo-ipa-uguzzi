@@ -1151,6 +1151,9 @@ void IPANxpNeo::processLiveControl(unsigned int channel, const NxpNeoStats *stat
 {
 	LiveControl &liveCtrl = LiveControl::getInstance();
 
+	if (!liveCtrl.initialized())
+		return;
+
 	if (buffers_.count(rawImage0BufferId_)) {
 		const MappedBuffer::Plane &rawBufferPlane =
 			buffers_.at(rawImage0BufferId_).planes()[0];
