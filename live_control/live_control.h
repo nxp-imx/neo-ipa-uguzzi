@@ -68,6 +68,9 @@ public:
 		      int timeoutMs);
 
 	int deinit();
+	bool initialized() {
+		return status_ == LC_INITIALIZED && serverFd_ != FD_INVALID;
+	}
 
 	/* the callback to register to uguzzi should be static */
 	static int txDataToTtCb(uguzzi_command_packet_header_t *apHeader,
