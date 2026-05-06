@@ -10,6 +10,8 @@
 #include <libcamera/base/file.h>
 #include <libcamera/base/log.h>
 
+#include "libcamera/internal/yaml_parser.h"
+
 namespace libcamera::ipa::nxpneo {
 
 LOG_DEFINE_CATEGORY(NxpNeoUguzziConfig)
@@ -39,7 +41,7 @@ int IPAFileConfig::load(const std::string &filename)
 		return ret;
 	}
 
-	std::unique_ptr<libcamera::YamlObject> root = YamlParser::parse(file);
+	std::unique_ptr<libcamera::ValueNode> root = YamlParser::parse(file);
 	if (!root) {
 		LOG(NxpNeoUguzziConfig, Error) << "Failed to parse configuration file";
 		return -EINVAL;
@@ -58,21 +60,21 @@ int IPAFileConfig::load(const std::string &filename)
 			<< "Configuration file doesn't contain any sensors section";
 		return -EINVAL;
 	}
-	const YamlObject &sensors = (*root)["sensors"];
+	const ValueNode &sensors = (*root)["sensors"];
 	ret = parseSensors(sensors);
 	if (ret)
 		LOG(NxpNeoUguzziConfig, Warning)
 			<< "Invalid sensors section in config file";
 
 	/* Parse the optional entity-filter section */
-	const YamlObject &entityFilter = (*root)["entity-filter"];
+	const ValueNode &entityFilter = (*root)["entity-filter"];
 	ret = parseEntityFilter(entityFilter);
 	if (ret)
 		LOG(NxpNeoUguzziConfig, Warning)
 			<< "Invalid entity filter section in config file";
 
 	/* Parse the optional override-inalign section */
-	const YamlObject &overrideInAlign = (*root)["override-inalign"];
+	const ValueNode &overrideInAlign = (*root)["override-inalign"];
 	ret = parseOverrideInAlign(overrideInAlign);
 	if (ret)
 		LOG(NxpNeoUguzziConfig, Warning)
@@ -86,7 +88,7 @@ int IPAFileConfig::load(const std::string &filename)
  * \param[in] sensors The sensors node in yaml file
  * \return 0 if no error was detected, a negative error code otherwise
  */
-int IPAFileConfig::parseSensors(const YamlObject &sensors)
+int IPAFileConfig::parseSensors(const ValueNode &sensors)
 {
 	const auto &list = sensors.asList();
 	for (const auto &[i, sensorName] : utils::enumerate(list)) {
@@ -112,12 +114,12 @@ int IPAFileConfig::parseSensors(const YamlObject &sensors)
 		std::string sensor = entity.has_value() ? entity.value() : model.value();
 
 		/* Parse the socket port */
-		const YamlObject &portObj = sensorName["socket-port"];
+		const ValueNode &portObj = sensorName["socket-port"];
 		socketMap_[sensor] =
 			portObj.get<uint16_t>().value_or(kSocketPort);
 
 		/* Parse the profiles info */
-		const YamlObject &profiles = sensorName["profiles"];
+		const ValueNode &profiles = sensorName["profiles"];
 		int ret = parseSensorProfiles(profiles, sensor);
 		if (ret) {
 			LOG(NxpNeoUguzziConfig, Warning)
@@ -135,7 +137,7 @@ int IPAFileConfig::parseSensors(const YamlObject &sensors)
  * \param[in] sensor The sensor model or entity for which profile is parsed
  * \return 0 if no error was detected, a negative error code otherwise
  */
-int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
+int IPAFileConfig::parseSensorProfiles(const ValueNode &profiles,
 				       const std::string &sensor)
 {
 	std::vector<TuningInfo> tuningInfos;
@@ -155,11 +157,11 @@ int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
 			return -EINVAL;
 		}
 		TuningInfo tuningInfo;
-		const YamlObject &bppObj = profile["bit-depth"];
+		const ValueNode &bppObj = profile["bit-depth"];
 		tuningInfo.bitDepth =
 			bppObj.get<uint16_t>().value_or(kBitDepth);
 
-		const YamlObject &modeObj = profile["mode"];
+		const ValueNode &modeObj = profile["mode"];
 		const std::string modeName = modeObj.get<std::string>().value_or("");
 		auto iter = kPipelineModeNameMap.find(modeName);
 		if (iter != kPipelineModeNameMap.end()) {
@@ -171,16 +173,16 @@ int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
 			tuningInfo.mode = IPAPipelineMode::Standard;
 		}
 
-		const YamlObject &dtpObj = profile["dtp-file"];
+		const ValueNode &dtpObj = profile["dtp-file"];
 		tuningInfo.dtpFile = dtpObj.get<std::string>().value_or("");
 
 		static const std::vector<uint32_t> tuningIdDefault =
 			{ kTuningIdRgb, kTuningIdIr };
-		const YamlObject &tuningIdObj = profile["tuning-id"];
+		const ValueNode &tuningIdObj = profile["tuning-id"];
 		tuningInfo.tuningId =
-			tuningIdObj.getList<uint32_t>().value_or(tuningIdDefault);
+			tuningIdObj.get<std::vector<uint32_t>>().value_or(tuningIdDefault);
 
-		const YamlObject &tuningModeObj = profile["tuning-mode"];
+		const ValueNode &tuningModeObj = profile["tuning-mode"];
 		tuningInfo.tuningMode =
 			tuningModeObj.get<uint32_t>().value_or(kTuningMode);
 
@@ -199,7 +201,7 @@ int IPAFileConfig::parseSensorProfiles(const YamlObject &profiles,
  * \param[in] entity The sensor filter node in yaml file
  * \return 0 if no error was detected, a negative error code otherwise
  */
-int IPAFileConfig::parseEntityFilter(const YamlObject &entity)
+int IPAFileConfig::parseEntityFilter(const ValueNode &entity)
 {
 	if (entity.isValue())
 		sensorFilter_ = entity.get<std::string>().value_or("");
@@ -212,7 +214,7 @@ int IPAFileConfig::parseEntityFilter(const YamlObject &entity)
  * \param[in] overrideInAlign The override inalign node in yaml file
  * \return 0 if no error was detected, a negative error code otherwise
  */
-int IPAFileConfig::parseOverrideInAlign(const YamlObject &overrideInAlign)
+int IPAFileConfig::parseOverrideInAlign(const ValueNode &overrideInAlign)
 {
 	if (overrideInAlign.isValue())
 		overrideInAlign_ = overrideInAlign.get<bool>().value_or(true);

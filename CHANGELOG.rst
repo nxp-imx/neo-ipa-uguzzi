@@ -3,8 +3,43 @@
 Change Log
 ==========
 
+Release android-16.0.0_2.0.0 (June 2026)
+========================================
+
+Associated versions
+-------------------
+
+* IPA release: android-16.0.0_2.0.0
+* IPA version: UGUZZI_IPA_v0.2.7
+* libcamera release: android-16.0.0_2.0.0
+* libcamera version: v0.7.1
+* uGuzzi version: 2025. 7.24[3]
+* Tuning Tool version: 0.95.07
+* libuguzzi.so sha256sum: 2818a4ed8d9ca79aeb0868cd385b731efc965bc65019435c96aba63900bb92c2
+* libuguzzi_connect.so sha256sum: f6842a578a55f191ee714f65e0f42ad8778f75851bf93856e549f25b8c152351
+
+Added
+-------
+
+* Enable ox05b1s multi-capture controls in RGBIr Dual Mode
+* Add camhelper for vivid cameras
+* Enable uGuzzi processing with multi channels
+
+Changed
+-------
+
+* Use v4l2-isp generic framework for params and stats
+* Update IPA NEO mojom interface with 2026 Q2 release
+   * Enums transformed as scoped enums
+* Remove rgbIr member from camHelper attributes
+* Rename the CameraHelper setControls into sensorControlList
+* Change the uGuzzi AE mode to non-harmonized
+* Synchronize header files to libcamera v0.7.1
+* Update for libcamera v0.7.1:
+   * Replace usage of YamlObject class by ValueNode
+
 Release android-16.0.0_1.4.0 (March 2026)
-====================================
+=========================================
 
 Associated versions
 -------------------
@@ -19,7 +54,7 @@ Associated versions
 * libuguzzi_connect.so sha256sum: f6842a578a55f191ee714f65e0f42ad8778f75851bf93856e549f25b8c152351
 
 Release android-16.0.0_1.2.0 (December 2025)
-====================================
+============================================
 
 Associated versions
 -------------------
