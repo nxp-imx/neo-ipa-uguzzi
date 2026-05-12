@@ -59,6 +59,7 @@ using namespace std;
 namespace libcamera {
 
 LOG_DEFINE_CATEGORY(NxpNeoUguzziIPA)
+LOG_DEFINE_CATEGORY(NxpNeoControlList)
 
 using namespace libcamera::nxp;
 
@@ -191,10 +192,6 @@ private:
 	void setControls(uint32_t frame);
 	bool libcameraCfa2UguzziBayerPattern(uint32_t cfa,
 					     uguzzi_cam_info_cfa_t *pattern);
-	std::string controlListToString(const ControlList *ctrls) const;
-	std::string logSensorParams(const uint32_t frame,
-				    const ControlList *ctrlsApplied,
-				    const ControlList *ctrlsToApply) const;
 
 	void metaDataToSensorData(const ControlList *mdCtrls,
 				  uguzzi_sensor_data_t *sensorData) const;
@@ -317,6 +314,26 @@ const std::map<const IPACameraContext, unsigned int> kTuningIdRgbIrMap = {
 const ControlInfoMap::Map nxpneoControls{};
 
 } /* namespace */
+
+namespace {
+
+const std::string logControlList(const ControlList *ctrls)
+{
+	std::stringstream log;
+
+	for (const auto &[id, value] : *ctrls) {
+		const auto it = ctrls->idMap()->find(id);
+		if (it == ctrls->idMap()->end())
+			continue;
+
+		log << "{ name = \"" << it->second->name()
+		    << "\", value = \"" << value.toString() << "\" } ";
+	}
+
+	return log.str();
+}
+
+} /* anonymous namespace */
 
 IPANxpNeo::IPANxpNeo()
 	: camFrames{}
@@ -1250,7 +1267,9 @@ void IPANxpNeo::setControls(uint32_t frame)
 		camHelper_->controlListSetAWB(&ctrls, Span<const double, 4>(wbGains));
 	}
 
-	LOG(NxpNeoUguzziIPA, Debug) << logSensorParams(frame, &mdControls_, &ctrls);
+	LOG(NxpNeoControlList, Debug)
+		<< "Controls update: { frame = " << frame << " }, "
+		<< logControlList(&ctrls);
 
 	setSensorControls.emit(frame, ctrls);
 
@@ -1714,6 +1733,10 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPACameraContext contex
 	/* Set processed flag for this context. */
 	context_.frameContext.processed.at(context) = true;
 
+	LOG(NxpNeoControlList, Debug)
+		<< "Sensor meta data: { frame = " << frame << " }, "
+		<< logControlList(&controls);
+
 	setControls(frame);
 
 #ifdef USE_LIVE_CONTROL
@@ -1942,33 +1965,6 @@ bool IPANxpNeo::isMonochrome(const PixelFormat &format) const
 
 	auto it = std::find(std::begin(formats), std::end(formats), format);
 	return it != std::end(formats);
-}
-
-std::string IPANxpNeo::controlListToString(const ControlList *ctrls) const
-{
-	std::stringstream log;
-	for (auto it = ctrls->begin(); it != ctrls->end(); ++it) {
-		ControlValue value = it->second;
-		if (it != ctrls->begin())
-			log << "\n";
-		log << it->first << ": val=" << value.toString();
-	}
-
-	return log.str();
-}
-
-std::string IPANxpNeo::logSensorParams(const uint32_t frame,
-				       const ControlList *ctrlsApplied,
-				       const ControlList *ctrlsToApply) const
-{
-	std::stringstream log;
-
-	log << "\n--- frame [" << frame << "] meta data:\n"
-	    << controlListToString(ctrlsApplied)
-	    << "\nupdate:\n"
-	    << controlListToString(ctrlsToApply);
-
-	return log.str();
 }
 
 /**
