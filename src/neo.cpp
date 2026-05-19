@@ -196,8 +196,8 @@ private:
 				    const ControlList *ctrlsApplied,
 				    const ControlList *ctrlsToApply) const;
 
-	void metaDataToSensorData(const ControlList *mdCtrls,
-				  uguzzi_sensor_data_t *sensorData) const;
+	void metaDataToSensorData(const IPACameraContext context,
+				  const ControlList *mdCtrls);
 
 	bool isYuvFormat(const PixelFormat &format) const;
 	bool isMonochrome(const PixelFormat &format) const;
@@ -1681,10 +1681,9 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPACameraContext contex
 		camHelper_->sensorControlsToMetaData(&sensorControls, &controls);
 	}
 
-	unsigned int channel = uguzziChannelMap_.at(context);
-	uguzzi_sensor_data_t *sensorData = &sensorDataPkg_.channel[channel];
-	metaDataToSensorData(&controls, sensorData);
+	metaDataToSensorData(context, &controls);
 
+	unsigned int channel = uguzziChannelMap_.at(context);
 	prepareUguzziSensorData(frame, channel);
 
 	const NxpNeoStats stats(buffers_.at(statsBufferId).planes()[0]);
@@ -1728,11 +1727,20 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPACameraContext contex
  * a single value for the main (long) capture, or up to 3 captures in the
  * following order: long, short then very short.
  *
+ * In multi-context situations (uGuzzi multi-channels), the uguzzi sensor data
+ * of each uGuzzi channel holds the following:
+ * - entry long: value of the context assigned to that channel
+ * - entry short: any value
+ * - entry very short: any value
+ * The IPA doesn't support so far multiple captures (long, short and
+ * very short values) in multi-context case. Hence only the value for the
+ * long entry is relevant.
+ *
+ * \param[in] context The camera context type (RGB or Ir)
  * \param[in] mdCtrls The metadata control list
- * \param[out] sensorData The uguzzi sensor data structure to populate
  */
-void IPANxpNeo::metaDataToSensorData(
-	const ControlList *mdCtrls, uguzzi_sensor_data_t *sensorData) const
+void IPANxpNeo::metaDataToSensorData(const IPACameraContext context,
+				     const ControlList *mdCtrls)
 {
 	bool mdValid = true;
 	bool mdMultiCapture = false;
@@ -1810,6 +1818,10 @@ void IPANxpNeo::metaDataToSensorData(
 		LOG(NxpNeoUguzziIPA, Warning) << "No temperature metadata";
 	}
 
+	/* Update the uGuzzi sensor data package for the current context. */
+	unsigned int channel = uguzziChannelMap_.at(context);
+	uguzzi_sensor_data_t *sensorData = &sensorDataPkg_.channel[channel];
+
 	/*
 	 * Exposure and gain - units:
 	 * - exposure: seconds for metadata, micro seconds for sensor data
@@ -1819,10 +1831,11 @@ void IPANxpNeo::metaDataToSensorData(
 	uguzzi_exposure_t *exposureL =
 		&sensorData->exp_gain[UGUZZI_WDR3_ENTRY_LONG];
 	exposureL->exposure =
-		static_cast<uint32_t>(exposure[UGUZZI_WDR3_ENTRY_LONG] * 1.0e6f);
+		static_cast<uint32_t>(exposure[static_cast<int>(context)] *
+				      1.0e6f);
 	exposureL->again =
-		static_cast<uint32_t>(aGain[UGUZZI_WDR3_ENTRY_LONG] *
-				      dGain[UGUZZI_WDR3_ENTRY_LONG] * UQ16_1);
+		static_cast<uint32_t>(aGain[static_cast<int>(context)] *
+				      dGain[static_cast<int>(context)] * UQ16_1);
 	exposureL->dgain = UQ16_1;
 
 	uguzzi_exposure_t *exposureS =
