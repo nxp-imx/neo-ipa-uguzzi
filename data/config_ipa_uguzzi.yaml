@@ -67,7 +67,7 @@ sensors:
         bit-depth: 16
         mode: standard
         dtp-file: database_mx95mbcam_1920-1280_16bpp.bin
-        tuning-id: 2010
+        tuning-id: [ 2010 ]
         tuning-mode: 0
   - model: os08a20
     socket-port: 50010
@@ -76,13 +76,13 @@ sensors:
         bit-depth: 12
         mode: standard
         dtp-file: database_os08a20_SDR_3840-2160_12bpp.bin
-        tuning-id: 2010
+        tuning-id: [ 2010 ]
         tuning-mode: 0
       - resolution: [3840, 2160]
         bit-depth: 12
         mode: hdr
         dtp-file: database_os08a20_HDR_3840-2160_12bpp.bin
-        tuning-id: 2010
+        tuning-id: [ 2010 ]
         tuning-mode: 0
   - model: ox05b1s
     socket-port: 50020
@@ -91,6 +91,6 @@ sensors:
         bit-depth: 10
         mode: rgbIr
         dtp-file: database_ox05b1s_2592-1944_10bpp.bin
-        tuning-id: 2010
+        tuning-id: [ 2010 ]
         tuning-mode: 0
 ...
