@@ -90,8 +90,8 @@ sensors:
       - resolution: [2592, 1944]
         bit-depth: 10
         mode: rgbIr
-        dtp-file: database_ox05b1s_2592-1944_10bpp.bin
-        tuning-id: [ 2010 ]
+        dtp-file: database_ox05b1s_dual_2592-1944_10bpp.bin
+        tuning-id: [ 2011 ]
         tuning-mode: 0
       - resolution: [2592, 1944]
         bit-depth: 10
