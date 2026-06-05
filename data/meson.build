@@ -2,6 +2,7 @@
 
 conf_files = files([
     'database_mx95mbcam_1920-1280_16bpp.bin',
+    'database_os08a20_SDR_1920-1080_10bpp.bin',
     'database_os08a20_SDR_3840-2160_12bpp.bin',
     'database_os08a20_HDR_3840-2160_12bpp.bin',
     'database_ox05b1s_dual_2592-1944_10bpp.bin',
