@@ -152,7 +152,6 @@ private:
 	void setSessionConfiguration(const IPAConfigInfo &ipaConfig);
 	int verifySensorToInit();
 	int getDTPConfig();
-	int checkDTPConfig(const IPACameraSensorInfo &sensorInfo);
 	int setUguzziInitialConfig();
 	int setUguzziStreamConfig(
 		const std::map<IPAStreamType, IPAStream> &streamConfig);
@@ -531,54 +530,6 @@ int IPANxpNeo::getDTPConfig()
 	}
 	LOG(NxpNeoUguzziIPA, Debug)
 		<< "Successful WB gains location configuration!";
-
-	return 0;
-}
-
-/**
- * \brief Check the tuning info
- *
- * This function checks if the parameters used for tuning are aligned with the
- * sensor information.
- * It checks the width, height and embedded top lines.
- * The CFA pattern is not checked since the libcamera ColorFilterArrangement
- * definition doesn't cover the RGBIr format.
- *
- * \param[in] sensorInfo The sensor information
- */
-int IPANxpNeo::checkDTPConfig(const IPACameraSensorInfo &sensorInfo)
-{
-	/*
-	 * Checking the parameters used for tuning can be performed for
-	 * channel 0 only. Indeed the parameters used for tuning are assumed to
-	 * be the same among the uguzzi channels.
-	 */
-	const uint32_t channel = 0;
-	const uguzzi_cam_info_cfa_t camInfoPattern =
-		static_cast<uguzzi_cam_info_cfa_t>(
-			camInfoDtp_[channel]->frame1_cfg.cfa);
-
-	uint32_t sensorTopLines = camHelper_->attributes()->mdParams.topLines;
-	/* outputSize from sensorInfo is cropped to remove the embedded lines */
-	Size sensorOutputSize =
-		{ sensorInfo.outputSize.width,
-		  sensorInfo.outputSize.height + sensorTopLines };
-	uint32_t dtpTopLines =
-		camInfoDtp_[channel]->frame1_cfg.front_emb_ln_cnt;
-	Size dtpOutputSize = { camInfoDtp_[channel]->frame1_cfg.width,
-			       camInfoDtp_[channel]->frame1_cfg.height };
-	const bool sensorConfigDiffers =
-		sensorOutputSize != dtpOutputSize ||
-		(sensorTopLines && sensorTopLines != dtpTopLines);
-
-	LOG(NxpNeoUguzziIPA, Debug) << "DTP CFA pattern: " << camInfoPattern;
-	if (sensorConfigDiffers)
-		LOG(NxpNeoUguzziIPA, Warning)
-			<< "Sensor frame and DTP frame configuration differs "
-			<< "[Size, nb_emb_ln] = ["
-			<< sensorOutputSize << ", " << sensorTopLines
-			<< "] versus ["
-			<< dtpOutputSize << ", " << dtpTopLines << "]";
 
 	return 0;
 }
@@ -1510,12 +1461,6 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 
 	/* Get DTP configuration */
 	ret = getDTPConfig();
-	if (ret) {
-		return ret;
-	}
-
-	/* Check DTP configuration */
-	ret = checkDTPConfig(*sensorInfo);
 	if (ret) {
 		return ret;
 	}
