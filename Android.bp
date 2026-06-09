@@ -121,10 +121,11 @@ prebuilt_etc {
     name: "neo_ipa_uguzzi_dtp",
     sub_dir: "configs/libcamera/nxp/neo/uguzzi",
     srcs: [
+        "data/config_ipa_uguzzi.yaml",
         "data/database_mx95mbcam_1920-1280_16bpp.bin",
         "data/database_os08a20_HDR_3840-2160_12bpp.bin",
         "data/database_os08a20_SDR_3840-2160_12bpp.bin",
-        "data/config_ipa_uguzzi.yaml",
+        "data/database_ox05b1s_dual_2592-1944_10bpp.bin",
     ],
     vendor: true,
 }
