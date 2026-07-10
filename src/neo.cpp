@@ -59,6 +59,7 @@ using namespace std;
 namespace libcamera {
 
 LOG_DEFINE_CATEGORY(NxpNeoUguzziIPA)
+LOG_DEFINE_CATEGORY(NxpNeoControlList)
 
 using namespace libcamera::nxp;
 
@@ -151,7 +152,6 @@ private:
 	void setSessionConfiguration(const IPAConfigInfo &ipaConfig);
 	int verifySensorToInit();
 	int getDTPConfig();
-	int checkDTPConfig(const IPACameraSensorInfo &sensorInfo);
 	int setUguzziInitialConfig();
 	int setUguzziStreamConfig(
 		const std::map<IPAStreamType, IPAStream> &streamConfig);
@@ -191,13 +191,9 @@ private:
 	void setControls(uint32_t frame);
 	bool libcameraCfa2UguzziBayerPattern(uint32_t cfa,
 					     uguzzi_cam_info_cfa_t *pattern);
-	std::string controlListToString(const ControlList *ctrls) const;
-	std::string logSensorParams(const uint32_t frame,
-				    const ControlList *ctrlsApplied,
-				    const ControlList *ctrlsToApply) const;
 
-	void metaDataToSensorData(const ControlList *mdCtrls,
-				  uguzzi_sensor_data_t *sensorData) const;
+	void metaDataToSensorData(const IPACameraContext context,
+				  const ControlList *mdCtrls);
 
 	bool isYuvFormat(const PixelFormat &format) const;
 	bool isMonochrome(const PixelFormat &format) const;
@@ -317,6 +313,26 @@ const std::map<const IPACameraContext, unsigned int> kTuningIdRgbIrMap = {
 const ControlInfoMap::Map nxpneoControls{};
 
 } /* namespace */
+
+namespace {
+
+const std::string logControlList(const ControlList *ctrls)
+{
+	std::stringstream log;
+
+	for (const auto &[id, value] : *ctrls) {
+		const auto it = ctrls->idMap()->find(id);
+		if (it == ctrls->idMap()->end())
+			continue;
+
+		log << "{ name = \"" << it->second->name()
+		    << "\", value = \"" << value.toString() << "\" } ";
+	}
+
+	return log.str();
+}
+
+} /* anonymous namespace */
 
 IPANxpNeo::IPANxpNeo()
 	: camFrames{}
@@ -514,54 +530,6 @@ int IPANxpNeo::getDTPConfig()
 	}
 	LOG(NxpNeoUguzziIPA, Debug)
 		<< "Successful WB gains location configuration!";
-
-	return 0;
-}
-
-/**
- * \brief Check the tuning info
- *
- * This function checks if the parameters used for tuning are aligned with the
- * sensor information.
- * It checks the width, height and embedded top lines.
- * The CFA pattern is not checked since the libcamera ColorFilterArrangement
- * definition doesn't cover the RGBIr format.
- *
- * \param[in] sensorInfo The sensor information
- */
-int IPANxpNeo::checkDTPConfig(const IPACameraSensorInfo &sensorInfo)
-{
-	/*
-	 * Checking the parameters used for tuning can be performed for
-	 * channel 0 only. Indeed the parameters used for tuning are assumed to
-	 * be the same among the uguzzi channels.
-	 */
-	const uint32_t channel = 0;
-	const uguzzi_cam_info_cfa_t camInfoPattern =
-		static_cast<uguzzi_cam_info_cfa_t>(
-			camInfoDtp_[channel]->frame1_cfg.cfa);
-
-	uint32_t sensorTopLines = camHelper_->attributes()->mdParams.topLines;
-	/* outputSize from sensorInfo is cropped to remove the embedded lines */
-	Size sensorOutputSize =
-		{ sensorInfo.outputSize.width,
-		  sensorInfo.outputSize.height + sensorTopLines };
-	uint32_t dtpTopLines =
-		camInfoDtp_[channel]->frame1_cfg.front_emb_ln_cnt;
-	Size dtpOutputSize = { camInfoDtp_[channel]->frame1_cfg.width,
-			       camInfoDtp_[channel]->frame1_cfg.height };
-	const bool sensorConfigDiffers =
-		sensorOutputSize != dtpOutputSize ||
-		(sensorTopLines && sensorTopLines != dtpTopLines);
-
-	LOG(NxpNeoUguzziIPA, Debug) << "DTP CFA pattern: " << camInfoPattern;
-	if (sensorConfigDiffers)
-		LOG(NxpNeoUguzziIPA, Warning)
-			<< "Sensor frame and DTP frame configuration differs "
-			<< "[Size, nb_emb_ln] = ["
-			<< sensorOutputSize << ", " << sensorTopLines
-			<< "] versus ["
-			<< dtpOutputSize << ", " << dtpTopLines << "]";
 
 	return 0;
 }
@@ -1250,7 +1218,9 @@ void IPANxpNeo::setControls(uint32_t frame)
 		camHelper_->controlListSetAWB(&ctrls, Span<const double, 4>(wbGains));
 	}
 
-	LOG(NxpNeoUguzziIPA, Debug) << logSensorParams(frame, &mdControls_, &ctrls);
+	LOG(NxpNeoControlList, Debug)
+		<< "Controls update: { frame = " << frame << " }, "
+		<< logControlList(&ctrls);
 
 	setSensorControls.emit(frame, ctrls);
 
@@ -1495,12 +1465,6 @@ int IPANxpNeo::configure(const IPAConfigInfo &ipaConfig,
 		return ret;
 	}
 
-	/* Check DTP configuration */
-	ret = checkDTPConfig(*sensorInfo);
-	if (ret) {
-		return ret;
-	}
-
 #ifdef USE_LIVE_CONTROL
 	/* Initialize Live Control */
 	/*
@@ -1684,10 +1648,9 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPACameraContext contex
 		camHelper_->sensorControlsToMetaData(&sensorControls, &controls);
 	}
 
-	unsigned int channel = uguzziChannelMap_.at(context);
-	uguzzi_sensor_data_t *sensorData = &sensorDataPkg_.channel[channel];
-	metaDataToSensorData(&controls, sensorData);
+	metaDataToSensorData(context, &controls);
 
+	unsigned int channel = uguzziChannelMap_.at(context);
 	prepareUguzziSensorData(frame, channel);
 
 	const NxpNeoStats stats(buffers_.at(statsBufferId).planes()[0]);
@@ -1714,6 +1677,10 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPACameraContext contex
 	/* Set processed flag for this context. */
 	context_.frameContext.processed.at(context) = true;
 
+	LOG(NxpNeoControlList, Debug)
+		<< "Sensor meta data: { frame = " << frame << " }, "
+		<< logControlList(&controls);
+
 	setControls(frame);
 
 #ifdef USE_LIVE_CONTROL
@@ -1731,11 +1698,20 @@ void IPANxpNeo::processStats(const uint32_t frame, const IPACameraContext contex
  * a single value for the main (long) capture, or up to 3 captures in the
  * following order: long, short then very short.
  *
+ * In multi-context situations (uGuzzi multi-channels), the uguzzi sensor data
+ * of each uGuzzi channel holds the following:
+ * - entry long: value of the context assigned to that channel
+ * - entry short: any value
+ * - entry very short: any value
+ * The IPA doesn't support so far multiple captures (long, short and
+ * very short values) in multi-context case. Hence only the value for the
+ * long entry is relevant.
+ *
+ * \param[in] context The camera context type (RGB or Ir)
  * \param[in] mdCtrls The metadata control list
- * \param[out] sensorData The uguzzi sensor data structure to populate
  */
-void IPANxpNeo::metaDataToSensorData(
-	const ControlList *mdCtrls, uguzzi_sensor_data_t *sensorData) const
+void IPANxpNeo::metaDataToSensorData(const IPACameraContext context,
+				     const ControlList *mdCtrls)
 {
 	bool mdValid = true;
 	bool mdMultiCapture = false;
@@ -1813,6 +1789,10 @@ void IPANxpNeo::metaDataToSensorData(
 		LOG(NxpNeoUguzziIPA, Warning) << "No temperature metadata";
 	}
 
+	/* Update the uGuzzi sensor data package for the current context. */
+	unsigned int channel = uguzziChannelMap_.at(context);
+	uguzzi_sensor_data_t *sensorData = &sensorDataPkg_.channel[channel];
+
 	/*
 	 * Exposure and gain - units:
 	 * - exposure: seconds for metadata, micro seconds for sensor data
@@ -1822,10 +1802,11 @@ void IPANxpNeo::metaDataToSensorData(
 	uguzzi_exposure_t *exposureL =
 		&sensorData->exp_gain[UGUZZI_WDR3_ENTRY_LONG];
 	exposureL->exposure =
-		static_cast<uint32_t>(exposure[UGUZZI_WDR3_ENTRY_LONG] * 1.0e6f);
+		static_cast<uint32_t>(exposure[static_cast<int>(context)] *
+				      1.0e6f);
 	exposureL->again =
-		static_cast<uint32_t>(aGain[UGUZZI_WDR3_ENTRY_LONG] *
-				      dGain[UGUZZI_WDR3_ENTRY_LONG] * UQ16_1);
+		static_cast<uint32_t>(aGain[static_cast<int>(context)] *
+				      dGain[static_cast<int>(context)] * UQ16_1);
 	exposureL->dgain = UQ16_1;
 
 	uguzzi_exposure_t *exposureS =
@@ -1942,33 +1923,6 @@ bool IPANxpNeo::isMonochrome(const PixelFormat &format) const
 
 	auto it = std::find(std::begin(formats), std::end(formats), format);
 	return it != std::end(formats);
-}
-
-std::string IPANxpNeo::controlListToString(const ControlList *ctrls) const
-{
-	std::stringstream log;
-	for (auto it = ctrls->begin(); it != ctrls->end(); ++it) {
-		ControlValue value = it->second;
-		if (it != ctrls->begin())
-			log << "\n";
-		log << it->first << ": val=" << value.toString();
-	}
-
-	return log.str();
-}
-
-std::string IPANxpNeo::logSensorParams(const uint32_t frame,
-				       const ControlList *ctrlsApplied,
-				       const ControlList *ctrlsToApply) const
-{
-	std::stringstream log;
-
-	log << "\n--- frame [" << frame << "] meta data:\n"
-	    << controlListToString(ctrlsApplied)
-	    << "\nupdate:\n"
-	    << controlListToString(ctrlsToApply);
-
-	return log.str();
 }
 
 /**
