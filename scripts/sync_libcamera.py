@@ -63,6 +63,12 @@ FILES = [
     ("src/ipa/nxp/cam_helper/md_parser_ox.h", "cam_helper"),
     ("src/ipa/nxp/cam_helper/md_parser_ox.cpp", "cam_helper"),
 
+    # params/stats helpers
+    ("src/ipa/nxp/neo/params.cpp", "utils"),
+    ("src/ipa/nxp/neo/params.h", "utils"),
+    ("src/ipa/nxp/neo/stats.cpp", "utils"),
+    ("src/ipa/nxp/neo/stats.h", "utils"),
+
     # gen-version.h
     ("utils/gen-version.sh", "scripts/libcamera"),
 
