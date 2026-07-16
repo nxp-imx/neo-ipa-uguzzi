@@ -47,9 +47,8 @@ extern "C" {
 #include "uguzzi/uguzzi_isp_out.h"
 }
 
-#ifdef USE_LIVE_CONTROL
 #include "live_control/live_control.h"
-#endif
+
 #ifdef UGUZZI_TESTS_ENABLED
 #include "tests/run_tests.h"
 #endif
