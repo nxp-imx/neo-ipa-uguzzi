@@ -3,6 +3,33 @@
 Change Log
 ==========
 
+Release lf-6.18.37_2.1.0 (September 2026)
+=========================================
+
+Associated versions
+-------------------
+
+* IPA release: lf-6.18.37_2.1.0
+* IPA version: UGUZZI_IPA_v0.2.7
+* libcamera release: lf-6.18.37_2.1.0
+* libcamera version: v0.7.2
+* uGuzzi version: 2025. 7.24[1]
+* Tuning Tool version: 0.95.07
+* libuguzzi.so sha256sum: 1d7f7721b74e52563bdebc088de63169f2a15771fd899bde7d2e640a20791318
+* libuguzzi_connect.so sha256sum: 8cf435a34b31647f661564c07563beabf1ec41c533b8d2698bbeb5aac590655d
+
+Changed
+-------
+
+* Synchronize header files to libcamera v0.7.2
+* Update for libcamera v0.7.2:
+   * Add v4l2_params.cpp object to the IPA library
+
+Fixed
+-----
+
+* Fix build with disabled live control
+
 Release lf-6.18.20_2.0.0 (June 2026)
 ====================================
 
@@ -19,7 +46,7 @@ Associated versions
 * libuguzzi_connect.so sha256sum: 8cf435a34b31647f661564c07563beabf1ec41c533b8d2698bbeb5aac590655d
 
 Added
--------
+-----
 
 * Enable ox05b1s multi-capture controls in RGBIr Dual Mode
 * Add camhelper for vivid cameras
