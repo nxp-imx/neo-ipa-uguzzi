@@ -35,8 +35,6 @@ FILES = [
     ("include/libcamera/internal/yaml_parser.h", "inc/libcamera/internal"),
     ("include/libcamera/internal/value_node.h", "inc/libcamera/internal"),
 
-    ("src/ipa/libipa/v4l2_params.h", "inc/libipa"),
-
     # Linux headers
     ("include/linux/media/v4l2-isp.h", "inc/linux/media"),
 
@@ -62,6 +60,14 @@ FILES = [
     ("src/ipa/rpi/cam_helper/md_parser.h", "cam_helper"),
     ("src/ipa/nxp/cam_helper/md_parser_ox.h", "cam_helper"),
     ("src/ipa/nxp/cam_helper/md_parser_ox.cpp", "cam_helper"),
+
+    # params/stats helpers
+    ("src/ipa/libipa/v4l2_params.h", "utils/libipa"),
+    ("src/ipa/libipa/v4l2_params.cpp", "utils/libipa"),
+    ("src/ipa/nxp/neo/params.cpp", "utils"),
+    ("src/ipa/nxp/neo/params.h", "utils"),
+    ("src/ipa/nxp/neo/stats.cpp", "utils"),
+    ("src/ipa/nxp/neo/stats.h", "utils"),
 
     # gen-version.h
     ("utils/gen-version.sh", "scripts/libcamera"),
@@ -102,8 +108,8 @@ def main():
             return 1
 
         if not os.path.isdir(dst_dir):
-            error(f"destination directory does not exist: {dst_dir}")
-            return 1
+            print(f"destination directory does not exist, creating: {dst_dir}")
+            os.makedirs(dst_dir, exist_ok=True)
 
     # Perform the copy
     for src_rel, dst_rel_dir in FILES:

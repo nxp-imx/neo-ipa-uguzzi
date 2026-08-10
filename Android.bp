@@ -17,6 +17,7 @@ cc_library_shared {
         "utils/uguzzi_log.cpp",
         "utils/params.cpp",
         "utils/stats.cpp",
+        "utils/libipa/v4l2_params.cpp",
         "live_control/live_control.cpp",
         "live_control/live_control_cr.cpp",
     ],
@@ -41,9 +42,10 @@ cc_library_shared {
         "system/core/libcutils/include",
     ],
     local_include_dirs: [
-        "inc",
         "dtp_utils",
+        "inc",
         "live_control",
+        "utils",
     ],
 }
 
