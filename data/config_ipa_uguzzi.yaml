@@ -78,12 +78,6 @@ sensors:
         dtp-file: database_os08a20_SDR_3840-2160_12bpp.bin
         tuning-id: [ 2010 ]
         tuning-mode: 0
-      - resolution: [1920, 1080]
-        bit-depth: 10
-        mode: standard
-        dtp-file: database_os08a20_SDR_1920-1080_10bpp.bin
-        tuning-id: [ 2010 ]
-        tuning-mode: 0
       - resolution: [3840, 2160]
         bit-depth: 12
         mode: hdr

@@ -37,6 +37,7 @@ endif
 ipa_includes = [
     include_directories('dtp_utils'),
     include_directories('inc'),
+    include_directories('utils'),
     include_directories('.'),
 ]
 
