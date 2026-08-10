@@ -3,6 +3,33 @@
 Change Log
 ==========
 
+Release android-17.0.0_1.0.0 (September 2026)
+=============================================
+
+Associated versions
+-------------------
+
+* IPA release: android-17.0.0_1.0.0
+* IPA version: UGUZZI_IPA_v0.2.7
+* libcamera release: android-17.0.0_1.0.0
+* libcamera version: v0.7.2
+* uGuzzi version: 2025. 7.24[3]
+* Tuning Tool version: 0.95.07
+* libuguzzi.so sha256sum: 2818a4ed8d9ca79aeb0868cd385b731efc965bc65019435c96aba63900bb92c2
+* libuguzzi_connect.so sha256sum: f6842a578a55f191ee714f65e0f42ad8778f75851bf93856e549f25b8c152351
+
+Changed
+-------
+
+* Synchronize header files to libcamera v0.7.2
+* Update for libcamera v0.7.2:
+   * Add v4l2_params.cpp object to the IPA library
+
+Fixed
+-----
+
+* Fix build with disabled live control
+
 Release android-16.0.0_2.0.0 (June 2026)
 ========================================
 
